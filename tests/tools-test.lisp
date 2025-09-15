@@ -34,5 +34,5 @@
         (ok (string= (gethash "jsonrpc" obj) "2.0"))
         (ok (eql (gethash "id" obj) 2))
         (ok (arrayp content))
-        (ok (string= (gethash \"type\" first) \"text\"))
-        (ok (string= (gethash \"text\" first) \"3\"))))))
+        (ok (string= (gethash "type" first) "text"))
+        (ok (string= (gethash "text" first) "3"))))))
