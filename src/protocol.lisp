@@ -16,25 +16,35 @@
   (yason:with-output-to-string* ()
     (yason:encode obj)))
 
+(defun %make-ht (&rest kvs)
+  (let ((h (make-hash-table :test #'equal)))
+    (loop for (k v) on kvs by #'cddr
+          do (setf (gethash k h) v))
+    h))
+
 (defun %result (id payload)
-  (list :jsonrpc "2.0" :id id :result payload))
+  (%make-ht "jsonrpc" "2.0" "id" id "result" payload))
 
 (defun %error (id code message &optional data)
-  (list :jsonrpc "2.0" :id id :error (append (list :code code :message message)
-                                              (when data (list :data data)))))
+  (let* ((err (%make-ht "code" code "message" message))
+         (obj (%make-ht "jsonrpc" "2.0" "id" id "error" err)))
+    (when data (setf (gethash "data" err) data))
+    obj))
 
 (defun handle-initialize (state id params)
   (declare (ignore params))
   (setf (initialized-p state) t)
   (%result id
-           (list :protocolVersion +protocol-version+
-                 :serverInfo (list :name "lisp-mcp-server" :version (version))
-                 :capabilities (list :tools (list :listChanged t)))))
+           (%make-ht
+            "protocolVersion" +protocol-version+
+            "serverInfo" (%make-ht "name" "lisp-mcp-server" "version" (version))
+            "capabilities" (%make-ht "tools" (%make-ht "listChanged" t)))))
 
 (defun handle-notification (state method params)
   (declare (ignore state params))
-  (ecase method
-    ("notifications/initialized" nil)))
+  (when (string= method "notifications/initialized")
+    (return-from handle-notification nil))
+  nil)
 
 (defun handle-request (state id method params)
   (cond
