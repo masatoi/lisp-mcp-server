@@ -49,6 +49,39 @@
 (defun handle-request (state id method params)
   (cond
     ((string= method "initialize") (handle-initialize state id params))
+    ((string= method "tools/list")
+     (let* ((repl-tool (%make-ht
+                        "name" "repl.eval"
+                        "description" "Evaluate Common Lisp forms with read-time eval disabled; returns last value as printed text."
+                        "inputSchema" (%make-ht
+                                       "type" "object"
+                                       "properties" (let ((p (make-hash-table :test #'equal)))
+                                                       (setf (gethash "code" p) (%make-ht "type" "string" "description" "Code string of one or more forms"))
+                                                       (setf (gethash "package" p) (%make-ht "type" "string"))
+                                                       (setf (gethash "printLevel" p) (%make-ht "type" "integer"))
+                                                       (setf (gethash "printLength" p) (%make-ht "type" "integer"))
+                                                       p)))))
+            (tools (vector repl-tool)))
+       (%result id (%make-ht "tools" tools))))
+    ((string= method "tools/call")
+     (let* ((name (and params (gethash "name" params)))
+            (args (and params (gethash "arguments" params))))
+       (cond
+         ((string= name "repl.eval")
+          (let* ((code (and args (gethash "code" args)))
+                 (pkg  (and args (gethash "package" args)))
+                 (pl   (and args (gethash "printLevel" args)))
+                 (plen (and args (gethash "printLength" args))))
+            (multiple-value-bind (printed _)
+                (repl-eval (or code "")
+                           :package (or pkg *package*)
+                           :print-level pl
+                           :print-length plen)
+              (declare (ignore _))
+              (let* ((item (%make-ht "type" "text" "text" printed))
+                     (content (make-array 1 :initial-contents (list item))))
+                (%result id (%make-ht "content" content))))))
+         (t (%error id -32601 (format nil "Tool ~A not found" name))))))
     (t (%error id -32601 (format nil "Method ~A not found" method)))))
 
 (defun process-json-line (line &optional (state (make-state)))
