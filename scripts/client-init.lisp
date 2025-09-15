@@ -36,4 +36,4 @@
         (uiop:quit 0))
     (error (e)
       (format *error-output* "Error: ~A~%" e)
-      (uiop:quit 2)))
+      (uiop:quit 2))))
