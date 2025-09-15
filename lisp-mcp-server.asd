@@ -36,6 +36,7 @@
                              (:file "repl-test")
                              (:file "protocol-test")
                              (:file "logging-test")
+                             (:file "tools-test")
                              (:file "tcp-test"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :rove :run c)))
