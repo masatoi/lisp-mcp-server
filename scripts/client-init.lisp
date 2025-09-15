@@ -15,14 +15,14 @@
     (format *error-output* "Unable to load :usocket. Ensure Quicklisp is installed.~%")
     (uiop:quit 3)))
 
-(defun arg (name &optional default)
+(defun argv-get (name &optional default)
   (let* ((argv (or (ignore-errors sb-ext:*posix-argv*) (list)))
          (pos (position name argv :test #'string=)))
     (or (and pos (let ((idx (1+ pos))) (when (< idx (length argv)) (nth idx argv))))
         default)))
 
-(let* ((host (or (arg "--host") (or (uiop:getenv "MCP_HOST") "127.0.0.1")))
-       (port (parse-integer (or (arg "--port") (or (uiop:getenv "MCP_PORT") "12345"))))
+  (let* ((host (or (argv-get "--host") (or (uiop:getenv "MCP_HOST") "127.0.0.1")))
+       (port (parse-integer (or (argv-get "--port") (or (uiop:getenv "MCP_PORT") "12345"))))
        (sock nil)
        (stream nil))
   (handler-case
