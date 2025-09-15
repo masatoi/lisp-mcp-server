@@ -2,15 +2,12 @@
 (in-package :lisp-mcp-server/tests)
 
 (defparameter *init-req*
-  (with-output-to-string (s)
-    (write-string
-     (yason:with-output-to-string* ()
-       (yason:encode
-        '((jsonrpc . "2.0")
-          (id . 1)
-          (method . "initialize")
-          (params . ((clientInfo . ((name . "test-client") (version . "0.1")))))))))
-     s)))
+  (yason:with-output-to-string* ()
+    (yason:encode
+     '((jsonrpc . "2.0")
+       (id . 1)
+       (method . "initialize")
+       (params . ((clientInfo . ((name . "test-client") (version . "0.1")))))))))
 
 (deftest initialize-handshake
   (testing "process-json-line responds with serverInfo and capabilities"
@@ -34,4 +31,3 @@
                                    (method . "notifications/initialized")
                                    (params . ((protocolVersion . "2025-06-18"))))))))
       (ok (null (mcp:process-json-line line))))))
-
