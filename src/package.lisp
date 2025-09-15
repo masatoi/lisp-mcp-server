@@ -6,6 +6,8 @@
    ;; public API (MVP skeleton)
    #:run
    #:version
+   ;; Logging controls
+    #:set-log-level-from-env
    ;; REPL interfaces
    #:repl-eval
    ;; Protocol helpers (for tests and custom transports)
