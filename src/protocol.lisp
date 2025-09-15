@@ -48,7 +48,7 @@
 
 (defun tools-descriptor-repl ()
   (%make-ht
-   "name" "repl.eval"
+   "name" "repl-eval"
    "description" "Evaluate Common Lisp forms with read-time eval disabled; returns last value as printed text."
    "inputSchema" (%make-ht
                   "type" "object"
@@ -68,7 +68,7 @@
   (let* ((name (and params (gethash "name" params)))
          (args (and params (gethash "arguments" params))))
     (cond
-      ((string= name "repl.eval")
+      ((or (string= name "repl-eval") (string= name "repl.eval"))
        (let* ((code (and args (gethash "code" args)))
               (pkg  (and args (gethash "package" args)))
               (pl   (and args (gethash "printLevel" args)))
