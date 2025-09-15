@@ -42,10 +42,7 @@
                      client-ver
                      (first +supported-protocol-versions+)))
          (caps (%make-ht
-                "tools" (%make-ht "listChanged" t)
-                ;; honest capability flags for future use
-                "resources" (%make-ht "subscribe" nil "listChanged" nil)
-                "prompts" (%make-ht "listChanged" nil))))
+                "tools" (%make-ht "listChanged" t))))
     (%result id
              (%make-ht
               "protocolVersion" chosen
