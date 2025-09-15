@@ -2,6 +2,9 @@
 (in-package :lisp-mcp-server)
 
 (defparameter +protocol-version+ "2025-06-18")
+(defparameter +supported-protocol-versions+
+  '("2025-06-18" "2025-03-26" "2024-11-05")
+  "Supported MCP protocol versions, ordered by preference.")
 
 (defclass server-state ()
   ((initialized-p :initform nil :accessor initialized-p)
@@ -32,13 +35,22 @@
     obj))
 
 (defun handle-initialize (state id params)
-  (declare (ignore params))
-  (setf (initialized-p state) t)
-  (%result id
-           (%make-ht
-            "protocolVersion" +protocol-version+
-            "serverInfo" (%make-ht "name" "lisp-mcp-server" "version" (version))
-            "capabilities" (%make-ht "tools" (%make-ht "listChanged" t)))))
+  (declare (ignore state))
+  (let* ((client-ver (and params (gethash "protocolVersion" params)))
+         (chosen (if (and client-ver (find client-ver +supported-protocol-versions+
+                                           :test #'string=))
+                     client-ver
+                     (first +supported-protocol-versions+)))
+         (caps (%make-ht
+                "tools" (%make-ht "listChanged" t)
+                ;; honest capability flags for future use
+                "resources" (%make-ht "subscribe" nil "listChanged" nil)
+                "prompts" (%make-ht "listChanged" nil))))
+    (%result id
+             (%make-ht
+              "protocolVersion" chosen
+              "serverInfo" (%make-ht "name" "lisp-mcp-server" "version" (version))
+              "capabilities" caps))))
 
 (defun handle-notification (state method params)
   (declare (ignore state params))
@@ -86,11 +98,11 @@
        (%error id -32601 (format nil "Tool ~A not found" name))))))
 
 (defun handle-request (state id method params)
-  (declare (ignore state))
   (cond
-    ((string= method "initialize") (handle-initialize (make-state) id params))
+    ((string= method "initialize") (handle-initialize state id params))
     ((string= method "tools/list") (handle-tools-list id))
     ((string= method "tools/call") (handle-tools-call id params))
+    ((string= method "ping") (%result id (%make-ht)))
     (t (%error id -32601 (format nil "Method ~A not found" method)))))
 
 (defun process-json-line (line &optional (state (make-state)))
