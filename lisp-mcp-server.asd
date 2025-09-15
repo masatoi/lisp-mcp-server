@@ -14,6 +14,7 @@
     (:module "src"
      :components (
        (:file "package")
+       (:file "repl")
        (:file "core")
        (:file "run")))
     ))
@@ -29,4 +30,3 @@
                              (:file "core-test"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :rove :run c)))
-

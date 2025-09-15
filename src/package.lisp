@@ -5,6 +5,7 @@
   (:export
    ;; public API (MVP skeleton)
    #:run
-   #:version))
+   #:version
+   ;; REPL interfaces
+   #:repl-eval))
 (in-package :lisp-mcp-server)
-
