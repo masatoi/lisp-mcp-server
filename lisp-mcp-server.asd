@@ -8,6 +8,8 @@
   :depends-on (
     :alexandria
     :yason
+    :usocket
+    :bordeaux-threads
     )
   :serial t
   :components (
@@ -24,12 +26,13 @@
   :description "Tests for lisp-mcp-server"
   :author ""
   :license "MIT"
-  :depends-on ("lisp-mcp-server" :rove)
+  :depends-on ("lisp-mcp-server" :rove :usocket :bordeaux-threads :cl-ppcre)
   :serial t
   :components ((:module "tests"
                 :components ((:file "package")
                              (:file "core-test")
                              (:file "repl-test")
-                             (:file "protocol-test"))))
+                             (:file "protocol-test")
+                             (:file "tcp-test"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :rove :run c)))
