@@ -18,5 +18,4 @@
 
 (deftest repl-eval-read-eval-disabled
   (testing "#.(...) is rejected at read time"
-    (ok (signals error (repl-eval "#.(+ 1 2)")))))
-
+    (ok (signals 'error (repl-eval "#.(+ 1 2)")))))
