@@ -8,7 +8,7 @@
            (obj (yason:parse resp))
            (result (gethash "result" obj))
            (tools (gethash "tools" result))
-           (repl (find-if (lambda (t) (string= (gethash "name" t) "repl.eval")) tools)))
+           (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl.eval")) tools)))
       (ok (stringp resp))
       (ok tools)
       (ok repl)
