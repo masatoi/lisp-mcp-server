@@ -44,10 +44,10 @@
 (defun process-json-line (line &optional (state (make-state)))
   "Process one JSON-RPC line and return a JSON line to send, or NIL for notifications."
   (let* ((msg (%decode-json line))
-         (jsonrpc (getf msg :jsonrpc))
-         (id (getf msg :id))
-         (method (getf msg :method))
-         (params (getf msg :params)))
+         (jsonrpc (gethash "jsonrpc" msg))
+         (id (gethash "id" msg))
+         (method (gethash "method" msg))
+         (params (gethash "params" msg)))
     (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
       (return-from process-json-line (%encode-json (%error id -32600 "Invalid Request"))))
     (if method
@@ -56,4 +56,3 @@
             ;; notification
             (progn (handle-notification state method params) nil))
         (%encode-json (%error id -32600 "Invalid Request")))))
-
