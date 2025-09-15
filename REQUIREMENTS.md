@@ -18,13 +18,13 @@
 
 ## 4. 対応環境
 - OS: Linux x86_64 優先（macOS はベストエフォート）。
-- 処理系: SBCL 2.x を第一優先、ECL は将来対応候補。
-- 依存: Quicklisp 経由で取得。JSON は `yason` もしくは `jzon` を想定（実測で選定）。
+- 処理系: SBCL 2.x を第一優先。
+- 依存: Quicklisp 経由で取得。JSON は `jzon` を想定。
 
 ## 5. セキュリティ
-- 既定は読み取り中心・最小権限。ファイルアクセスはプロジェクトルートの allow-list 配下に限定。
-- ランタイム `eval`/動的インターニングは禁止。REPL 駆動は「ファイル編集＋`compile-file`/`load`」と ASDF オペレーションで実現。
-- 任意コード評価が必要な場合は明示的フラグで別プロセス・サンドボックス化（MVP範囲外）。
+- 既定は最小権限。ファイルアクセスはプロジェクトルートの allow-list 配下に限定。
+- MVP では `eval` を提供する。安全策として読み込み時の `#.` 等は禁止（`*read-eval*` = NIL）。評価は指定パッケージ（既定 `CL-USER`）で逐次実行し、最後の値を返す。
+- 将来の強化: フォームの allow-list、別パッケージ/スレッドでの隔離、CPU/時間制限、より厳密な I/O サンドボックス。
 
 ## 6. 提供機能（MVP）
 - tools
@@ -32,6 +32,7 @@
   - `fs.read_file(path, offset?, limit?)`：テキストのみ、サイズ上限あり。
   - `project.load_system(name)`：ASDF により依存も含めロード。
   - `project.build()`：`asdf:compile-op` 相当を実行。
+  - `repl.eval(code, package?, print-level?, print-length?)`：`code` 文字列をパース（`*read-eval*`=NIL）し逐次評価。最後の値と表示文字列を返す。
   - `code.find_definition(symbol, kind)`：関数/マクロ等の定義位置を返す（静的解析＋実装依存機能の併用、SBCL では `sb-introspect` を利用、他処理系は静的解析にフォールバック）。
   - `code.ast_at(path, form-range)`：安全な S 式パーサで AST を抽出（リーダーマクロを実行しない独自パース）。
 - resources
