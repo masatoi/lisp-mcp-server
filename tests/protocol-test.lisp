@@ -23,3 +23,19 @@
   (testing "notifications/initialized returns no response"
     (let* ((line "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}"))
       (ok (null (mcp:process-json-line line))))))
+
+(deftest initialize-echo-version
+  (testing "initialize echoes client protocolVersion when supported"
+    (let* ((line "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\"}}")
+           (resp (mcp:process-json-line line))
+           (obj (yason:parse resp))
+           (result (gethash "result" obj)))
+      (ok (string= (gethash "protocolVersion" result) "2024-11-05")))))
+
+(deftest ping-returns-empty
+  (testing "ping returns empty result object"
+    (let* ((resp (mcp:process-json-line "{\"jsonrpc\":\"2.0\",\"id\":42,\"method\":\"ping\"}"))
+           (obj (yason:parse resp))
+           (result (gethash "result" obj)))
+      (ok (hash-table-p result))
+      (ok (= (hash-table-count result) 0)))))
