@@ -19,12 +19,15 @@ This is a minimal loop for E2E bring-up; full transport features come later."
   (ecase transport
     (:stdio
      (let ((state (make-state)))
+       (log-event :info "stdio.start")
        (loop for line = (read-line in nil :eof)
              until (eq line :eof)
              do (let ((resp (process-json-line line state)))
                   (when resp
                     (write-line resp out)
                     (force-output out))))
+       (log-event :info "stdio.stop")
        t))
     (:tcp
+     (log-event :info "tcp.start" "host" host "port" port)
      (serve-tcp :host host :port port :accept-once accept-once :on-listening on-listening))))

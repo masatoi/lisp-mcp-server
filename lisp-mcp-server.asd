@@ -16,6 +16,7 @@
     (:module "src"
      :components (
        (:file "package")
+       (:file "log")
        (:file "repl")
        (:file "protocol")
        (:file "tcp")
@@ -34,6 +35,7 @@
                              (:file "core-test")
                              (:file "repl-test")
                              (:file "protocol-test")
+                             (:file "logging-test")
                              (:file "tcp-test"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :rove :run c)))

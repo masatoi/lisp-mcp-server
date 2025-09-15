@@ -27,6 +27,7 @@ accepts a single connection and returns T after the client closes."
                         (unwind-protect
                              (progn
                                (setf client (usocket:socket-accept listener))
+                               (log-event :info "tcp.accept" "remote" (ignore-errors (usocket:get-peer-address client)))
                                (setf stream (usocket:socket-stream client))
                                (%process-stream stream)
                                t)
@@ -36,4 +37,3 @@ accepts a single connection and returns T after the client closes."
                  (handle-one)
                  (loop do (handle-one)))))
       (when listener (ignore-errors (usocket:socket-close listener))))))
-

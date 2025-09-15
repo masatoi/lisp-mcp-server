@@ -58,11 +58,21 @@
          (id (gethash "id" msg))
          (method (gethash "method" msg))
          (params (gethash "params" msg)))
+    (log-event :debug "rpc.dispatch" "id" id "method" method)
     (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
-      (return-from process-json-line (%encode-json (%error id -32600 "Invalid Request"))))
+      (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
+        (log-event :warn "rpc.invalid" "reason" "bad jsonrpc version")
+        (return-from process-json-line resp)))
     (if method
         (if id
-            (%encode-json (handle-request state id method params))
+            (let ((r (handle-request state id method params)))
+              (log-event :debug "rpc.result" "id" id "method" method)
+              (%encode-json r))
             ;; notification
-            (progn (handle-notification state method params) nil))
-        (%encode-json (%error id -32600 "Invalid Request")))))
+            (progn
+              (handle-notification state method params)
+              (log-event :debug "rpc.notify" "method" method)
+              nil))
+        (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
+          (log-event :warn "rpc.invalid" "reason" "missing method")
+          resp))))
