@@ -8,5 +8,4 @@
 
 (deftest run-skeleton
   (testing "run returns T for skeleton"
-    (ok (eq t (run :transport :stdio)))))
-
+    (ok (eq t (mcp:run :transport :stdio)))))
