@@ -7,5 +7,7 @@
    #:run
    #:version
    ;; REPL interfaces
-   #:repl-eval))
+   #:repl-eval
+   ;; Protocol helpers (for tests and custom transports)
+   #:process-json-line))
 (in-package :lisp-mcp-server)
