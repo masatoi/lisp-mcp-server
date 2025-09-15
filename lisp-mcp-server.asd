@@ -27,6 +27,7 @@
   :serial t
   :components ((:module "tests"
                 :components ((:file "package")
-                             (:file "core-test"))))
+                             (:file "core-test")
+                             (:file "repl-test"))))
   :perform (asdf:test-op (op c)
              (uiop:symbol-call :rove :run c)))
