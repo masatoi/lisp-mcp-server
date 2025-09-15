@@ -1,0 +1,6 @@
+;;;; tests/package.lisp
+(defpackage :lisp-mcp-server/tests
+  (:use :cl :rove)
+  (:import-from :lisp-mcp-server #:version #:run))
+(in-package :lisp-mcp-server/tests)
+
