@@ -18,4 +18,8 @@
 
 (deftest repl-eval-read-eval-disabled
   (testing "#.(...) is rejected at read time"
-    (ok (signals 'error (repl-eval "#.(+ 1 2)")))))
+    (let ((thrown nil))
+      (handler-case
+          (progn (repl-eval "#.(+ 1 2)") (setf thrown nil))
+        (error () (setf thrown t)))
+      (ok thrown))) )
