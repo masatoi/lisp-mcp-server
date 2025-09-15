@@ -18,6 +18,7 @@
        (:file "package")
        (:file "repl")
        (:file "protocol")
+       (:file "tcp")
        (:file "core")
        (:file "run")))
     ))
