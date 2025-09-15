@@ -2,7 +2,18 @@
 ;; Simple TCP client to send MCP initialize and print the response line.
 
 (require :asdf)
-(ignore-errors (ql:quickload :usocket))
+(let ((ok nil))
+  (handler-case
+      (progn (asdf:load-system :usocket) (setf ok t))
+    (error ()
+      (let ((setup (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname))))
+        (when (probe-file setup)
+          (load setup)
+          (asdf:load-system :usocket)
+          (setf ok t)))))
+  (unless ok
+    (format *error-output* "Unable to load :usocket. Ensure Quicklisp is installed.~%")
+    (uiop:quit 3)))
 
 (defun arg (name &optional default)
   (let* ((argv (or (ignore-errors sb-ext:*posix-argv*) (list)))
@@ -26,4 +37,3 @@
     (error (e)
       (format *error-output* "Error: ~A~%" e)
       (uiop:quit 2)))
-
