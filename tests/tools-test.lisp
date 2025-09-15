@@ -8,7 +8,7 @@
            (obj (yason:parse resp))
            (result (gethash "result" obj))
            (tools (gethash "tools" result))
-           (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl.eval")) tools)))
+           (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl-eval")) tools)))
       (ok (stringp resp))
       (ok tools)
       (ok repl)
@@ -20,7 +20,7 @@
 
 (deftest tools-call-repl-eval
   (testing "tools/call executes repl.eval and returns text content"
-    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"repl.eval\",\"arguments\":{\"code\":\"(+ 1 2)\"}}}"))
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(+ 1 2)\"}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj))
