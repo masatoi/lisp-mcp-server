@@ -73,11 +73,22 @@
   (let* ((tools (vector (tools-descriptor-repl))))
     (%result id (%make-ht "tools" tools))))
 
+(defun %normalize-tool-name (name)
+  "Normalize a tool NAME possibly namespaced like 'ns.tool' or 'ns/tool'.
+Returns a downcased local tool name (string)."
+  (let* ((s (string-downcase name))
+         (dot (position #\. s :from-end t))
+         (sl (position #\/ s :from-end t))
+         (idx (max (or dot -1) (or sl -1))))
+    (subseq s (1+ idx))))
+
 (defun handle-tools-call (id params)
   (let* ((name (and params (gethash "name" params)))
-         (args (and params (gethash "arguments" params))))
+         (args (and params (gethash "arguments" params)))
+         (local (and name (%normalize-tool-name name))))
+    (when name (log-event :debug "tools.call" "name" name "local" local))
     (cond
-      ((or (string= name "repl-eval") (string= name "repl.eval"))
+      ((member local '("repl-eval" "repl.eval" "repl_eval") :test #'string=)
        (let* ((code (and args (gethash "code" args)))
               (pkg  (and args (gethash "package" args)))
               (pl   (and args (gethash "printLevel" args)))

@@ -32,4 +32,17 @@
         (ok (string= (gethash "type" first) "text"))
         (ok (string= (gethash "text" first) "3"))))))
 
+(deftest tools-call-namespaced-name
+  (testing "namespaced tool name like lisp_mcp.repl-eval is accepted"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"lisp_mcp.repl-eval\",\"arguments\":{\"code\":\"(+ 2 3)\"}}}"))
+      (let* ((resp (mcp:process-json-line req))
+             (obj (yason:parse resp))
+             (result (gethash \"result\" obj))
+             (content (and result (gethash \"content\" result)))
+             (first (and (arrayp content) (> (length content) 0) (aref content 0))))
+        (ok (string= (gethash \"jsonrpc\" obj) \"2.0\"))
+        (ok (eql (gethash \"id\" obj) 5))
+        (ok (arrayp content))
+        (ok (string= (gethash \"text\" first) \"5\"))))))
+
 ;; tools/call test to be added after tools/list passes
