@@ -38,8 +38,8 @@
                         (ok (uiop:process-alive-p proc))
                         ;; Close stdin to allow bridge to exit
                         (close pin)
-                        (uiop:wait-process proc)
-                        (ok (= 0 (uiop:process-info-exit-code proc))))
+                        (let ((rc (uiop:wait-process proc)))
+                          (ok (= 0 rc))))
                    (when (and proc (uiop:process-alive-p proc))
                      (ignore-errors (uiop:terminate-process proc))))))
           (bordeaux-threads:join-thread thr))))
