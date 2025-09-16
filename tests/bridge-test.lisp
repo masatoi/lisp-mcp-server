@@ -42,4 +42,4 @@
                           (ok (= 0 rc))))
                    (when (and proc (uiop:process-alive-p proc))
                      (ignore-errors (uiop:terminate-process proc))))))
-          (bordeaux-threads:join-thread thr))))
+          (bordeaux-threads:join-thread thr))))))
