@@ -37,7 +37,7 @@ Load and run from an existing REPL:
 
 ;; Start TCP transport on an ephemeral port, print chosen port
 (lisp-mcp-server:run :transport :tcp
-                     :port 0
+                     :port 12345
                      :accept-once nil
                      :on-listening (lambda (p)
                                      (format t "~&port=~A~%" p)))
@@ -151,10 +151,3 @@ allows writing there or configure SBCL’s cache directory accordingly.
 
 ## License
 MIT
-
-***
-
-If you’re integrating with an editor/agent, start with the TCP transport and
-use the stdio↔TCP bridge if your client expects stdio. The `repl-eval` tool is a
-safe baseline for REPL‑driven development; extend with additional tools to taste.
-
