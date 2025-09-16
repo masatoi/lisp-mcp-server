@@ -34,6 +34,13 @@ def eprint(*a, **k):
 def bridge(host: str, port: int, connect_timeout: float = 5.0) -> int:
     try:
         sock = socket.create_connection((host, port), timeout=connect_timeout)
+        # Disable read timeouts after connect: MCP connections can idle for long periods.
+        # Only the connect phase should be bounded by time.
+        try:
+            sock.settimeout(None)
+        except Exception:
+            # If disabling timeouts fails, continue; reads may still work but could be fragile.
+            pass
     except Exception as e:
         eprint(f"[bridge] connect failed: {e}")
         return 2
@@ -114,4 +121,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
