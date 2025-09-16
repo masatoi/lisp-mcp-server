@@ -1,7 +1,7 @@
 ;;;; src/log.lisp
 (in-package :lisp-mcp-server)
 
-(defparameter *log-level* :info)
+(defparameter *log-level* :debug)
 (defparameter *log-stream* *error-output*)
 
 (defun %level->int (level)
