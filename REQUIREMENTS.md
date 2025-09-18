@@ -23,7 +23,7 @@
 
 ## 5. セキュリティ
 - 既定は最小権限。ファイルアクセスはプロジェクトルートの allow-list 配下に限定。
-- MVP では `eval` を提供する。安全策として読み込み時の `#.` 等は禁止（`*read-eval*` = NIL）。評価は指定パッケージ（既定 `CL-USER`）で逐次実行し、最後の値を返す。
+- MVP では `eval` を提供する。読み込み時の `#.` 等も許可する前提で、評価は指定パッケージ（既定 `CL-USER`）で逐次実行し、最後の値を返す。
 - 将来の強化: フォームの allow-list、別パッケージ/スレッドでの隔離、CPU/時間制限、より厳密な I/O サンドボックス。
 
 ## 6. 提供機能（MVP）
@@ -32,7 +32,7 @@
   - `fs.read_file(path, offset?, limit?)`：テキストのみ、サイズ上限あり。
   - `project.load_system(name)`：ASDF により依存も含めロード。
   - `project.build()`：`asdf:compile-op` 相当を実行。
-  - `repl.eval(code, package?, print-level?, print-length?)`：`code` 文字列をパース（`*read-eval*`=NIL）し逐次評価。最後の値と表示文字列を返す。
+  - `repl.eval(code, package?, print-level?, print-length?)`：`code` 文字列をパースし逐次評価。読み込み時も `eval` を許容し、最後の値と表示文字列を返す。
   - `code.find_definition(symbol, kind)`：関数/マクロ等の定義位置を返す（静的解析＋実装依存機能の併用、SBCL では `sb-introspect` を利用、他処理系は静的解析にフォールバック）。
   - `code.ast_at(path, form-range)`：安全な S 式パーサで AST を抽出（リーダーマクロを実行しない独自パース）。
 - resources

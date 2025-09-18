@@ -6,10 +6,8 @@
 
 (declaim (inline %read-all))
 (defun %read-all (string)
-  "Read all top-level forms from STRING with `*read-eval*` disabled.
-Returns a list of forms in order of appearance."
-  (let ((*read-eval* nil)
-        (*readtable* (copy-readtable nil)))
+  "Read all top-level forms from STRING and return them as a list."
+  (let ((*readtable* (copy-readtable nil)))
     (with-input-from-string (in string)
       (loop for form = (read in nil :eof)
             until (eq form :eof)
@@ -24,10 +22,9 @@ Returns a list of forms in order of appearance."
                               (print-level nil) (print-length nil))
   "Evaluate INPUT (a string of one or more s-expressions) in PACKAGE.
 
-Reading is performed with `*read-eval*` bound to NIL to disable reader-time
-evaluation (e.g., `#.`). All forms are evaluated sequentially; the last value
-is returned as a printed string per `prin1-to-string`. The second return value
-is the raw last value for callers that want it."
+Forms are read as provided and evaluated sequentially; the last value is
+returned as a printed string per `prin1-to-string`. The second return value is
+the raw last value for callers that want it."
   (let* ((pkg (etypecase package
                 (package package)
                 (symbol (find-package package))
@@ -40,4 +37,3 @@ is the raw last value for callers that want it."
     (let ((*print-level* print-level)
           (*print-length* print-length))
       (values (prin1-to-string last-value) last-value))))
-

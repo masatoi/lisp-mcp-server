@@ -16,10 +16,9 @@
         (ok (string= printed "24"))
         (ok (= value 24))))))
 
-(deftest repl-eval-read-eval-disabled
-  (testing "#.(...) is rejected at read time"
-    (let ((thrown nil))
-      (handler-case
-          (progn (repl-eval "#.(+ 1 2)") (setf thrown nil))
-        (error () (setf thrown t)))
-      (ok thrown))) )
+(deftest repl-eval-read-eval-enabled
+  (testing "#.(...) is evaluated at read time"
+    (multiple-value-bind (printed value)
+        (repl-eval "#.(+ 1 2)")
+      (ok (string= printed "3"))
+      (ok (= value 3)))))
