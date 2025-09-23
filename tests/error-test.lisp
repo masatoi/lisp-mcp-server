@@ -28,8 +28,7 @@
         (ok (string= (gethash "tool" data) "repl-eval"))
         (ok (stringp (gethash "type" data)))
         (ok (stringp (gethash "backtrace" data)))
-        (ok (> (length (gethash "backtrace" data)) 0))))
-
+        (ok (> (length (gethash "backtrace" data)) 0)))))
   (testing "(error \"boom\") also maps to -32000 and includes backtrace"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":102,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(error \\\"boom\\\")\"}}}"))
       (let* ((resp (mcp:process-json-line req))
