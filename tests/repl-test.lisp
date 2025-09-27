@@ -22,3 +22,19 @@
         (repl-eval "#.(+ 1 2)")
       (ok (string= printed "3"))
       (ok (= value 3)))))
+
+(deftest repl-eval-timeout
+  (testing "long-running forms trigger evaluation-timeout"
+    (let ((mcp::*default-eval-timeout* 0.1))
+      (let ((caught nil)
+            (start (get-internal-real-time))
+            (units internal-time-units-per-second))
+        (handler-case
+            (repl-eval "(progn (sleep 1) :done)")
+          (mcp:evaluation-timeout (c)
+            (setf caught c)))
+        (ok caught)
+        (ok (typep caught 'mcp:evaluation-timeout))
+        (ok (>= (mcp:evaluation-timeout-seconds caught) 0.1))
+        (let ((elapsed (/ (- (get-internal-real-time) start) units)))
+          (ok (< elapsed 1.0)))))))

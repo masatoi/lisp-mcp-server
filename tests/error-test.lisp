@@ -57,3 +57,18 @@
                (obj (yason:parse resp))
                (err (gethash "error" obj)))
           (ok (null (gethash "data" err))))))))
+
+(deftest repl-eval-timeout-json-error
+  (testing "repl-eval timeout maps to tool error"
+    (let ((mcp::*default-eval-timeout* 0.5))
+      (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":401,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(progn (sleep 2) :done)\",\"timeoutSeconds\":0.1}}}"))
+        (let* ((resp (mcp:process-json-line req))
+               (obj (yason:parse resp))
+               (err (gethash "error" obj))
+               (data (and err (gethash "data" err))))
+          (ok err)
+          (ok (eql (gethash "id" obj) 401))
+          (ok (eql (gethash "code" err) -32000))
+          (ok (stringp (gethash "message" err)))
+          (ok (string= (gethash "tool" data) "repl-eval"))
+          (ok (string= (gethash "type" data) "evaluation-timeout")))))))

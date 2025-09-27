@@ -14,9 +14,12 @@
       (ok repl)
       (ok (stringp (gethash "description" repl)))
       (let* ((schema (gethash "inputSchema" repl))
-             (code (gethash "code" (gethash "properties" schema))))
+             (props (gethash "properties" schema))
+             (code (gethash "code" props))
+             (timeout (gethash "timeoutSeconds" props)))
         (ok (string= (gethash "type" schema) "object"))
-        (ok (string= (gethash "type" code) "string"))))))
+        (ok (string= (gethash "type" code) "string"))
+        (ok (string= (gethash "type" timeout) "number"))))))
 
 (deftest tools-call-repl-eval
   (testing "tools/call executes repl.eval and returns text content"

@@ -67,7 +67,10 @@
                                  (setf (gethash "package" p) (%make-ht "type" "string"))
                                  (setf (gethash "printLevel" p) (%make-ht "type" "integer"))
                                  (setf (gethash "printLength" p) (%make-ht "type" "integer"))
-                                 p))))
+                                 (setf (gethash "timeoutSeconds" p)
+                                       (%make-ht "type" "number"
+                                                "description" "Optional evaluation timeout in seconds"))
+                                  p))))
 
 (defun handle-tools-list (id)
   (let* ((tools (vector (tools-descriptor-repl))))
@@ -92,13 +95,15 @@ Returns a downcased local tool name (string)."
        (let* ((code (and args (gethash "code" args)))
               (pkg  (and args (gethash "package" args)))
               (pl   (and args (gethash "printLevel" args)))
-              (plen (and args (gethash "printLength" args))))
+              (plen (and args (gethash "printLength" args)))
+              (timeout (and args (gethash "timeoutSeconds" args))))
          (handler-case
              (multiple-value-bind (printed _)
                  (repl-eval (or code "")
                             :package (or pkg *package*)
                             :print-level pl
-                            :print-length plen)
+                            :print-length plen
+                            :timeout timeout)
                (declare (ignore _))
                (let* ((item (%make-ht "type" "text" "text" printed))
                       (content (make-array 1 :initial-contents (list item))))
