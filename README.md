@@ -33,7 +33,6 @@ Load and run from an existing REPL:
 
 ```lisp
 (ql:quickload :lisp-mcp-server)
-(asdf:load-system :lisp-mcp-server)
 
 ;; Start TCP transport on an ephemeral port, print chosen port
 (lisp-mcp-server:run :transport :tcp
@@ -112,8 +111,8 @@ This project uses Rove and ASDF’s `test-op`.
 From a REPL with Quicklisp:
 
 ```lisp
-(asdf:load-asd #P"lisp-mcp-server.asd")
-(asdf:test-system "lisp-mcp-server")
+(ql:quickload :lisp-mcp-server/tests)
+(asdf:test-system :lisp-mcp-server/tests)
 ```
 
 What’s covered:

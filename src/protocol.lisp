@@ -106,20 +106,26 @@ Returns a downcased local tool name (string)."
                             :timeout timeout)
                (declare (ignore _))
                (let* ((item (%make-ht "type" "text" "text" printed))
-                      (content (make-array 1 :initial-contents (list item))))
+                      (content (vector item)))
                  (%result id (%make-ht "content" content))))
            (condition (c)
-             (log-event :error "tools.error"
-                        "name" (or name local)
-                        "type" (condition-type-string c)
-                        "message" (princ-to-string c))
-             (let ((data (%make-ht
-                          "tool" (or name local)
-                          "type" (condition-type-string c)
-                          "message" (princ-to-string c)))
-                   (bt (%backtrace-string c)))
-               (when bt (setf (gethash "backtrace" data) bt))
-               (%error id -32000 "Tool evaluation error." data))))))
+             (let* ((tool-name (or name local))
+                    (cond-type (condition-type-string c))
+                    (cond-message (princ-to-string c)))
+               (log-event :error "tools.error"
+                          "name" tool-name
+                          "type" cond-type
+                          "message" cond-message)
+               (let ((response-data
+                       (when (eql *error-detail* :backtrace)
+                         (let ((data (%make-ht
+                                      "tool" tool-name
+                                      "type" cond-type
+                                      "message" cond-message)))
+                           (let ((bt (%backtrace-string c)))
+                             (when bt (setf (gethash "backtrace" data) bt)))
+                           data))))
+                 (%error id -32000 "Tool evaluation error." response-data)))))))
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
 

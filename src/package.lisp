@@ -13,6 +13,7 @@
     #:*default-eval-timeout*
     #:set-default-eval-timeout
     #:evaluation-timeout
+    #:evaluation-timeout-seconds
     ;; Protocol helpers (for tests and custom transports)
     #:process-json-line
     ;; TCP server

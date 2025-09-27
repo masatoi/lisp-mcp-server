@@ -63,7 +63,7 @@ SECONDS may be NIL to disable the timeout."
        (if (and ,timeout-var (> ,timeout-var 0))
            #+sbcl
            (handler-case
-               (sb-ext:with-timeout (,timeout-var)
+               (sb-ext:with-timeout ,timeout-var
                  ,@body)
              (sb-ext:timeout ()
                (error 'evaluation-timeout :seconds ,timeout-var)))
@@ -123,10 +123,10 @@ SECONDS may be NIL to disable the timeout."
   (handler-case
       (multiple-value-bind (printed value)
           (%with-eval-timeout ((eval-job-timeout job))
-                              (%evaluate-job (eval-job-code job)
-                                             (eval-job-package job)
-                                             (eval-job-print-level job)
-                                             (eval-job-print-length job)))
+            (%evaluate-job (eval-job-code job)
+                           (eval-job-package job)
+                           (eval-job-print-level job)
+                           (eval-job-print-length job)))
         (%complete-job job :printed printed :value value))
     (condition (c)
       (%complete-job job :error c))))
