@@ -22,7 +22,6 @@ evaluations."
   (check-type seconds (real (0) *))
   (setf *default-eval-timeout* (coerce seconds 'double-float)))
 
-(declaim (inline %read-all))
 (defun %read-all (string)
   "Read all top-level forms from STRING and return them as a list."
   (let ((*readtable* (copy-readtable nil)))

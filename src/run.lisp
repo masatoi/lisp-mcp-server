@@ -28,6 +28,7 @@
                                 (:accept-once t) (:on-listening function))
                           (values boolean &optional))
                 run))
+
 (defun run (&key (transport :stdio) (in *standard-input*) (out *standard-output*)
                  (host "127.0.0.1") (port 0) (accept-once t) on-listening)
   "Start the MCP server loop. For :stdio, reads newline-delimited JSON from IN
