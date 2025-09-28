@@ -103,7 +103,7 @@ SECONDS may be NIL to disable the timeout."
         (values (eval-job-printed job)
                 (eval-job-value job)
                 (eval-job-stdout job)
-                (eval-job-stderr job))))
+                (eval-job-stderr job)))))
 
 (defun %push-job (manager job)
   (bordeaux-threads:with-lock-held ((eval-manager-lock manager))
