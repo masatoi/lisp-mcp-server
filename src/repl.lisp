@@ -39,6 +39,8 @@ evaluations."
   timeout
   printed
   value
+  stdout
+  stderr
   error
   (done-p nil)
   (lock (bordeaux-threads:make-lock))
@@ -81,10 +83,12 @@ SECONDS may be NIL to disable the timeout."
     ((typep timeout '(real (0) *)) (coerce timeout 'double-float))
     (t (error 'type-error :datum timeout :expected-type '(real (0) *)))))
 
-(defun %complete-job (job &key printed value error)
+(defun %complete-job (job &key printed value stdout stderr error)
   (bordeaux-threads:with-lock-held ((eval-job-lock job))
     (setf (eval-job-printed job) printed
           (eval-job-value job) value
+          (eval-job-stdout job) stdout
+          (eval-job-stderr job) stderr
           (eval-job-error job) error
           (eval-job-done-p job) t)
     (bordeaux-threads:condition-notify (eval-job-condition job))))
@@ -96,7 +100,10 @@ SECONDS may be NIL to disable the timeout."
                                               (eval-job-lock job)))
     (if (eval-job-error job)
         (error (eval-job-error job))
-        (values (eval-job-printed job) (eval-job-value job)))))
+        (values (eval-job-printed job)
+                (eval-job-value job)
+                (eval-job-stdout job)
+                (eval-job-stderr job))))
 
 (defun %push-job (manager job)
   (bordeaux-threads:with-lock-held ((eval-manager-lock manager))
@@ -120,13 +127,13 @@ SECONDS may be NIL to disable the timeout."
 
 (defun %execute-job (job)
   (handler-case
-      (multiple-value-bind (printed value)
+      (multiple-value-bind (printed value stdout stderr)
           (%with-eval-timeout ((eval-job-timeout job))
             (%evaluate-job (eval-job-code job)
                            (eval-job-package job)
                            (eval-job-print-level job)
                            (eval-job-print-length job)))
-        (%complete-job job :printed printed :value value))
+        (%complete-job job :printed printed :value value :stdout stdout :stderr stderr))
     (condition (c)
       (%complete-job job :error c))))
 
@@ -152,19 +159,32 @@ SECONDS may be NIL to disable the timeout."
 
 (defun %evaluate-job (code package print-level print-length)
   (let ((*package* package))
-    (let ((forms (%read-all code))
-          (last-value nil))
-      (dolist (form forms)
-        (setf last-value (eval form)))
-      (let ((*print-level* print-level)
-            (*print-length* print-length))
-        (values (prin1-to-string last-value) last-value)))))
+    (let* ((forms (%read-all code))
+           (last-value nil)
+           (stdout-stream (make-string-output-stream))
+           (stderr-stream (make-string-output-stream))
+           (orig-out *standard-output*)
+           (orig-err *error-output*))
+      (let ((*standard-output* (if orig-out
+                                   (make-broadcast-stream stdout-stream orig-out)
+                                   stdout-stream))
+            (*error-output* (if orig-err
+                                (make-broadcast-stream stderr-stream orig-err)
+                                stderr-stream)))
+        (dolist (form forms)
+          (setf last-value (eval form)))
+        (let ((*print-level* print-level)
+              (*print-length* print-length))
+          (values (prin1-to-string last-value)
+                  last-value
+                  (get-output-stream-string stdout-stream)
+                  (get-output-stream-string stderr-stream)))))))
 
 (declaim (ftype (function (string &key (:package (or package symbol string))
                                   (:print-level (or null (integer 0)))
                                   (:print-length (or null (integer 0)))
                                   (:timeout (or null (real (0) *))))
-                          (values string t &optional))
+                          (values string t &optional string string))
                 repl-eval))
 
 (defun repl-eval (input &key (package *default-eval-package*)
@@ -174,8 +194,8 @@ SECONDS may be NIL to disable the timeout."
 
 Forms are read and evaluated sequentially in a dedicated evaluation worker
 thread. The last value is returned both as a printed string and as the raw
-value. Evaluation aborts with `evaluation-timeout` when the specified timeout
-elapses."
+value, alongside any text captured from standard output and error streams.
+Evaluation aborts with `evaluation-timeout` when the specified timeout elapses."
   (check-type input string)
   (let* ((pkg (etypecase package
                 (package package)

@@ -38,3 +38,12 @@
         (ok (>= (mcp:evaluation-timeout-seconds caught) 0.1))
         (let ((elapsed (/ (- (get-internal-real-time) start) units)))
           (ok (< elapsed 1.0)))))))
+
+(deftest repl-eval-captures-output
+  (testing "captures stdout and stderr text"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(progn (format t \"hello~%\") (format *error-output* \"warn~%\") :done)")
+      (ok (string= printed ":DONE"))
+      (ok (eq value :done))
+      (ok (search "hello" stdout))
+      (ok (search "warn" stderr)))))
