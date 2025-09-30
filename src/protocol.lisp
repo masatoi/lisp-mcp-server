@@ -58,7 +58,7 @@
 (defun tools-descriptor-repl ()
   (%make-ht
    "name" "repl-eval"
-   "description" "Evaluate Common Lisp forms with read-time eval disabled; returns last value as printed text."
+   "description" "Evaluate Common Lisp forms and return the last value as printed text."
    "inputSchema" (%make-ht
                   "type" "object"
                   "properties" (let ((p (make-hash-table :test #'equal)))

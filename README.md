@@ -2,8 +2,8 @@
 
 A minimal Model Context Protocol (MCP) server for Common Lisp. It provides a
 newline‑delimited JSON‑RPC 2.0 transport over stdio or TCP, a small protocol
-layer (initialize, ping, tools/list, tools/call), and a safe-ish REPL tool that
-evaluates forms with `*read-eval*` disabled and returns the last value.
+layer (initialize, ping, tools/list, tools/call), and a REPL tool that evaluates
+forms and returns the last value.
 
 This repo is intentionally small and test-first. It’s designed for editor/agent
 clients to drive Common Lisp development via MCP.
@@ -68,8 +68,7 @@ connecting, so it can stay idle indefinitely (until stdin closes).
 
 ## Tools
 ### `repl-eval`
-Evaluate one or more forms with reader eval disabled and return the last value
-as a text item.
+Evaluate one or more forms and return the last value as a text item.
 
 Input schema (JSON):
 - `code` (string, required): one or more s‑expressions
@@ -112,7 +111,7 @@ From a REPL with Quicklisp:
 
 What’s covered:
 - Version/API surface sanity
-- REPL evaluation semantics (`*read-eval*` = NIL)
+- REPL evaluation semantics (reader eval enabled)
 - Protocol handshake (`initialize`, `ping`, tools listing/calls)
 - Logging of RPC dispatch/results
 - TCP server accept/respond (newline‑delimited JSON)
@@ -128,11 +127,11 @@ allows writing there or configure SBCL’s cache directory accordingly.
 - `lisp-mcp-server.asd` — main and test systems (delegates `test-op` to Rove)
 
 ## Security Notes
-- Reader safety: `repl-eval` binds `*read-eval*` to `NIL` to prevent `#.` and
-  other reader‑time evaluation.
-- Execution safety: It still evaluates forms at runtime in the specified
-  package. Treat this like a local, trusted development tool. If you expose it
-  to untrusted inputs, add allowlists, resource/time limits, and output caps.
+- Reader and runtime evaluation are both enabled. Treat this as a trusted,
+  local-development tool; untrusted input can execute arbitrary code in the
+  host Lisp image.
+- If exposure beyond trusted usage is planned, add allowlists, resource/time
+  limits, and output caps.
 
 ## Troubleshooting
 - Bridge exits after a few seconds of inactivity: ensure you’re using the
