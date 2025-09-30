@@ -35,8 +35,15 @@ is the raw last value for callers that want it."
          (*package* pkg)
          (forms (%read-all input))
          (last-value nil))
-    (dolist (form forms)
-      (setf last-value (eval form)))
+    (block eval-forms
+      (handler-bind ((error (lambda (e)
+                              (setf last-value
+                                    (with-output-to-string (out)
+                                      (format out "~A~%" e)
+                                      (uiop:print-backtrace :stream out :condition e)))
+                              (return-from eval-forms))))
+        (dolist (form forms)
+          (setf last-value (eval form)))))
     (let ((*print-level* print-level)
           (*print-length* print-length))
       (values (prin1-to-string last-value) last-value))))
