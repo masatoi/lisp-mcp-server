@@ -89,19 +89,23 @@ Returns a downcased local tool name (string)."
     (when name (log-event :debug "tools.call" "name" name "local" local))
     (cond
       ((member local '("repl-eval" "repl.eval" "repl_eval") :test #'string=)
-       (let* ((code (and args (gethash "code" args)))
-              (pkg  (and args (gethash "package" args)))
-              (pl   (and args (gethash "printLevel" args)))
-              (plen (and args (gethash "printLength" args))))
-         (multiple-value-bind (printed _)
-             (repl-eval (or code "")
-                        :package (or pkg *package*)
-                        :print-level pl
-                        :print-length plen)
-           (declare (ignore _))
-           (let* ((item (%make-ht "type" "text" "text" printed))
-                  (content (make-array 1 :initial-contents (list item))))
-             (%result id (%make-ht "content" content))))))
+       (handler-case
+           (let* ((code (and args (gethash "code" args)))
+                  (pkg  (and args (gethash "package" args)))
+                  (pl   (and args (gethash "printLevel" args)))
+                  (plen (and args (gethash "printLength" args))))
+             (multiple-value-bind (printed _)
+                 (repl-eval (or code "")
+                            :package (or pkg *package*)
+                            :print-level pl
+                            :print-length plen)
+               (declare (ignore _))
+               (let* ((item (%make-ht "type" "text" "text" printed))
+                      (content (make-array 1 :initial-contents (list item))))
+                 (%result id (%make-ht "content" content)))))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during REPL evaluation: ~A" e)))))
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
 
