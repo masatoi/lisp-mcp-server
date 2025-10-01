@@ -16,8 +16,8 @@
   (yason:parse line))
 
 (defun %encode-json (obj)
-  (yason:with-output-to-string* ()
-    (yason:encode obj)))
+  (with-output-to-string (stream)
+    (yason:encode obj stream)))
 
 (defun %make-ht (&rest kvs)
   (let ((h (make-hash-table :test #'equal)))
