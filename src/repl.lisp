@@ -7,7 +7,8 @@
 (declaim (inline %read-all))
 (defun %read-all (string)
   "Read all top-level forms from STRING and return them as a list."
-  (let ((*readtable* (copy-readtable nil)))
+  (let ((*readtable* (copy-readtable nil))
+        (*read-eval* t))
     (with-input-from-string (in string)
       (loop for form = (read in nil :eof)
             until (eq form :eof)
