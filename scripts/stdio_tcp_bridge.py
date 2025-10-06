@@ -74,11 +74,20 @@ def bridge(host: str, port: int, connect_timeout: float = 5.0) -> int:
     def pump_tcp_to_stdout():
         try:
             for line in sock_file_r:
-                sys.stdout.write(line)
-                try:
-                    sys.stdout.flush()
-                except Exception:
-                    pass
+                # Filter out log lines (start with {"ts":) and send them to stderr
+                if line.strip().startswith('{"ts":'):
+                    sys.stderr.write(line)
+                    try:
+                        sys.stderr.flush()
+                    except Exception:
+                        pass
+                else:
+                    # Only write JSON-RPC responses to stdout
+                    sys.stdout.write(line)
+                    try:
+                        sys.stdout.flush()
+                    except Exception:
+                        pass
         except Exception as e:
             eprint(f"[bridge] tcp→stdout error: {e}")
         finally:

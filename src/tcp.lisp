@@ -5,10 +5,15 @@
   (let ((state (make-state)))
     (loop for line = (read-line stream nil :eof)
           until (eq line :eof)
-          do (let ((resp (process-json-line line state)))
-               (when resp
-                 (write-line resp stream)
-                 (finish-output stream))))))
+          do (progn
+               (log-event :debug "tcp.read" "line" line)
+               (let ((resp (process-json-line line state)))
+                 (log-event :debug "tcp.response" "resp" resp "resp-nil" (null resp))
+                 (when resp
+                   (log-event :debug "tcp.write" "resp" resp)
+                   (write-line resp stream)
+                   (finish-output stream)
+                   (log-event :debug "tcp.flushed")))))))
 
 (defun serve-tcp (&key (host "127.0.0.1") (port 0) (accept-once t) on-listening)
   "Serve MCP over TCP. If PORT is 0, an ephemeral port is chosen.

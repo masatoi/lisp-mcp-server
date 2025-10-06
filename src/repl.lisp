@@ -25,15 +25,27 @@
 Forms are read as provided and evaluated sequentially; the last value is
 returned as a printed string per `prin1-to-string`. The second return value is
 the raw last value for callers that want it."
-  (let* ((pkg (etypecase package
-                (package package)
-                (symbol (find-package package))
-                (string (find-package package))))
-         (*package* pkg)
-         (forms (%read-all input))
-         (last-value nil))
-    (dolist (form forms)
-      (setf last-value (eval form)))
-    (let ((*print-level* print-level)
-          (*print-length* print-length))
-      (values (prin1-to-string last-value) last-value))))
+  (let ((last-value nil))
+    (handler-bind ((error (lambda (e)
+                            (setf last-value
+                                  (with-output-to-string (out)
+                                    (format out "~A~%" e)
+                                    (uiop:print-backtrace :stream out :condition e)))
+                            (return-from repl-eval (values last-value last-value)))))
+      ;; Resolve package (may signal error)
+      (let* ((pkg (etypecase package
+                    (package package)
+                    (symbol (find-package package))
+                    (string (find-package package)))))
+        (unless pkg
+          (error "Package ~S does not exist" package))
+        (let ((*package* pkg))
+          ;; Read forms (may signal error)
+          (let ((forms (%read-all input)))
+            ;; Evaluate forms (may signal error)
+            (dolist (form forms)
+              (setf last-value (eval form))))))
+      ;; Normal completion: format result
+      (let ((*print-level* print-level)
+            (*print-length* print-length))
+        (values (prin1-to-string last-value) last-value)))))
