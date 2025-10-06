@@ -40,7 +40,9 @@ the raw last value for callers that want it."
                     (string (find-package package)))))
         (unless pkg
           (error "Package ~S does not exist" package))
-        (let ((*package* pkg))
+        (let ((*package* pkg)
+              (*read-eval* t)
+              (*print-readably* t))
           ;; Read forms (may signal error)
           (let ((forms (%read-all input)))
             ;; Evaluate forms (may signal error)
