@@ -119,26 +119,30 @@ Returns a downcased local tool name (string)."
 
 (defun process-json-line (line &optional (state (make-state)))
   "Process one JSON-RPC line and return a JSON line to send, or NIL for notifications."
-  (let* ((msg (%decode-json line))
+  (let* ((trimmed (string-trim '(#\Space #\Tab #\Newline #\Return) line)))
+    (when (string= trimmed "")
+      (log-event :debug "rpc.skip-empty")
+      (return-from process-json-line nil))
+    (let* ((msg (%decode-json trimmed))
          (jsonrpc (gethash "jsonrpc" msg))
          (id (gethash "id" msg))
          (method (gethash "method" msg))
          (params (gethash "params" msg)))
-    (log-event :debug "rpc.dispatch" "id" id "method" method)
-    (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
-      (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
-        (log-event :warn "rpc.invalid" "reason" "bad jsonrpc version")
-        (return-from process-json-line resp)))
-    (if method
-        (if id
-            (let ((r (handle-request state id method params)))
-              (log-event :debug "rpc.result" "id" id "method" method)
-              (%encode-json r))
-            ;; notification
-            (progn
-              (handle-notification state method params)
-              (log-event :debug "rpc.notify" "method" method)
-              nil))
+      (log-event :debug "rpc.dispatch" "id" id "method" method)
+      (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
         (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
-          (log-event :warn "rpc.invalid" "reason" "missing method")
-          resp))))
+          (log-event :warn "rpc.invalid" "reason" "bad jsonrpc version")
+          (return-from process-json-line resp)))
+      (if method
+          (if id
+              (let ((r (handle-request state id method params)))
+                (log-event :debug "rpc.result" "id" id "method" method)
+                (%encode-json r))
+              ;; notification
+              (progn
+                (handle-notification state method params)
+                (log-event :debug "rpc.notify" "method" method)
+                nil))
+          (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
+            (log-event :warn "rpc.invalid" "reason" "missing method")
+            resp)))))

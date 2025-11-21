@@ -9,4 +9,3 @@
 (defun version ()
   "Return server version string."
   +server-version+)
-

@@ -39,3 +39,8 @@
            (result (gethash "result" obj)))
       (ok (hash-table-p result))
       (ok (= (hash-table-count result) 0)))))
+
+(deftest blank-lines-are-ignored
+  (testing "empty or whitespace-only lines are skipped without error"
+    (ok (null (mcp:process-json-line "")))
+    (ok (null (mcp:process-json-line "   ")))))
