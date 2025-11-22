@@ -24,8 +24,5 @@ jobs:
           ros install rove
 
       - name: Run Tests
-        working-directory: ${{ github.workspace }}
-        env:
-          ASDF_SOURCE_REGISTRY: .//:
         run: |
-          ros -L sbcl-bin -e '(progn (asdf:load-asd #p"lisp-mcp-server.asd") (asdf:test-system "lisp-mcp-server/tests"))'
+          ros -e "(asdf:test-system :lisp-mcp-server/tests)"
