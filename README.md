@@ -1,4 +1,5 @@
 # lisp-mcp-server
+[![CI](https://github.com/masatoi/lisp-mcp-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/masatoi/lisp-mcp-server/actions/workflows/ci.yml)
 
 A minimal Model Context Protocol (MCP) server for Common Lisp. It provides a
 newline‑delimited JSON‑RPC 2.0 transport over stdio or TCP, a small protocol
