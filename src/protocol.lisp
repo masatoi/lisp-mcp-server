@@ -69,6 +69,33 @@
                                   (setf (gethash "printLength" p) (%make-ht "type" "integer"))
                                   p))))
 
+(defun tools-descriptor-fs-read ()
+  (%make-ht
+   "name" "fs.read_file"
+   "description" "Read a text file with optional offset and limit."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "path" p) (%make-ht "type" "string"))
+                   (setf (gethash "offset" p) (%make-ht "type" "integer"))
+                   (setf (gethash "limit" p) (%make-ht "type" "integer"))
+                   (%make-ht "type" "object" "properties" p "required" (vector "path")))))
+
+(defun tools-descriptor-fs-write ()
+  (%make-ht
+   "name" "fs.write_file"
+   "description" "Write text content to a file relative to project root."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "path" p) (%make-ht "type" "string"))
+                   (setf (gethash "content" p) (%make-ht "type" "string"))
+                   (%make-ht "type" "object" "properties" p "required" (vector "path" "content")))))
+
+(defun tools-descriptor-fs-list ()
+  (%make-ht
+   "name" "fs.list_directory"
+   "description" "List entries in a directory, filtering hidden and build artifacts."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "path" p) (%make-ht "type" "string"))
+                   (%make-ht "type" "object" "properties" p "required" (vector "path")))))
+
 (defun tools-descriptor-code-find ()
   (%make-ht
    "name" "code.find"
@@ -97,6 +124,9 @@
 
 (defun handle-tools-list (id)
   (let* ((tools (vector (tools-descriptor-repl)
+                        (tools-descriptor-fs-read)
+                        (tools-descriptor-fs-write)
+                        (tools-descriptor-fs-list)
                         (tools-descriptor-code-find)
                         (tools-descriptor-code-describe))))
     (%result id (%make-ht "tools" tools))))
@@ -131,9 +161,42 @@ Returns a downcased local tool name (string)."
                (let* ((item (%make-ht "type" "text" "text" printed))
                       (content (make-array 1 :initial-contents (list item))))
                  (%result id (%make-ht "content" content)))))
+          (error (e)
+            (%error id -32603
+                    (format nil "Internal error during REPL evaluation: ~A" e)))))
+      ((member local '("fs.read_file" "fs.read") :test #'string=)
+       (handler-case
+           (let* ((path (and args (gethash "path" args)))
+                  (offset (and args (gethash "offset" args)))
+                  (limit (and args (gethash "limit" args))))
+             (unless (stringp path)
+               (return-from handle-tools-call
+                 (%error id -32602 "path must be a string")))
+             (let ((content (fs-read-file path :offset offset :limit limit)))
+               (%result id (%make-ht "content" content))))
          (error (e)
-           (%error id -32603
-                   (format nil "Internal error during REPL evaluation: ~A" e)))))
+           (%error id -32603 (format nil "Internal error during fs.read_file: ~A" e)))))
+      ((member local '("fs.write_file" "fs.write") :test #'string=)
+       (handler-case
+           (let* ((path (and args (gethash "path" args)))
+                  (content (and args (gethash "content" args))))
+             (unless (and (stringp path) (stringp content))
+               (return-from handle-tools-call
+                 (%error id -32602 "path and content must be strings")))
+             (fs-write-file path content)
+             (%result id (%make-ht "success" t)))
+         (error (e)
+           (%error id -32603 (format nil "Internal error during fs.write_file: ~A" e)))))
+      ((member local '("fs.list_directory" "fs.list" "fs.ls") :test #'string=)
+       (handler-case
+           (let* ((path (and args (gethash "path" args))))
+             (unless (stringp path)
+               (return-from handle-tools-call
+                 (%error id -32602 "path must be a string")))
+             (let ((entries (fs-list-directory path)))
+               (%result id (%make-ht "entries" entries))))
+         (error (e)
+           (%error id -32603 (format nil "Internal error during fs.list_directory: ~A" e)))))
       ((member local '("find" "find_definition") :test #'string=)
        (handler-case
            (let* ((symbol (and args (gethash "symbol" args)))

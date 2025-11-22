@@ -6,6 +6,11 @@
    ;; public API (MVP skeleton)
    #:run
    #:version
+   ;; File system tools
+   #:fs-read-file
+   #:fs-write-file
+   #:fs-list-directory
+   #:*project-root*
    ;; Code intelligence
    #:code-find-definition
    #:code-describe-symbol

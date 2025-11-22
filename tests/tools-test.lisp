@@ -9,11 +9,17 @@
            (result (gethash "result" obj))
            (tools (gethash "tools" result))
            (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl-eval")) tools))
+           (fs-read (find-if (lambda (tool) (string= (gethash "name" tool) "fs.read_file")) tools))
+           (fs-write (find-if (lambda (tool) (string= (gethash "name" tool) "fs.write_file")) tools))
+           (fs-list (find-if (lambda (tool) (string= (gethash "name" tool) "fs.list_directory")) tools))
            (code-find (find-if (lambda (tool) (string= (gethash "name" tool) "code.find")) tools))
            (code-describe (find-if (lambda (tool) (string= (gethash "name" tool) "code.describe")) tools)))
       (ok (stringp resp))
       (ok tools)
       (ok repl)
+      (ok fs-read)
+      (ok fs-write)
+      (ok fs-list)
       (ok code-find)
       (ok code-describe)
       (ok (stringp (gethash "description" repl)))
@@ -21,6 +27,42 @@
              (code (gethash "code" (gethash "properties" schema))))
         (ok (string= (gethash "type" schema) "object"))
         (ok (string= (gethash "type" code) "string"))))))
+
+(deftest tools-call-fs-read
+  (testing "tools/call fs.read_file returns content"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.read_file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))
+      (let* ((resp (mcp:process-json-line req))
+             (obj (yason:parse resp))
+             (result (gethash "result" obj)))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok (stringp (gethash "content" result)))
+        (ok (> (length (gethash "content" result)) 0))))))
+
+(deftest tools-call-fs-write-and-readback
+  (testing "tools/call fs.write_file writes then fs.read_file reads"
+    (let* ((req-write "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.write_file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\",\"content\":\"hi\"}}}")
+           (req-read  "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.read_file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\"}}}"))
+      (unwind-protect
+           (progn
+             (let* ((resp (mcp:process-json-line req-write))
+                    (obj (yason:parse resp))
+                    (result (gethash "result" obj)))
+               (ok (gethash "success" result)))
+             (let* ((resp2 (mcp:process-json-line req-read))
+                    (obj2 (yason:parse resp2))
+                    (result2 (gethash "result" obj2)))
+               (ok (string= (gethash "content" result2) "hi"))))
+        (ignore-errors (delete-file "tmp-tools-write.txt"))))))
+
+(deftest tools-call-fs-list
+  (testing "tools/call fs.list_directory lists entries"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.list_directory\",\"arguments\":{\"path\":\".\"}}}"))
+      (let* ((resp (mcp:process-json-line req))
+             (obj (yason:parse resp))
+             (result (gethash "result" obj))
+             (entries (gethash "entries" result)))
+        (ok (arrayp entries))
+        (ok (> (length entries) 0))))))
 
 (deftest tools-call-code-find
   (testing "tools/call code.find returns path and line"

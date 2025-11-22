@@ -4,6 +4,9 @@
   (:import-from :lisp-mcp-server
                 #:version
                 #:repl-eval
+                #:fs-read-file
+                #:fs-write-file
+                #:fs-list-directory
                 #:code-find-definition
                 #:code-describe-symbol))
 (in-package :lisp-mcp-server/tests)
