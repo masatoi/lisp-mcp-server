@@ -6,6 +6,9 @@
    ;; public API (MVP skeleton)
    #:run
    #:version
+   ;; Code intelligence
+   #:code-find-definition
+   #:code-describe-symbol
    ;; Logging controls
     #:set-log-level-from-env
    ;; REPL interfaces

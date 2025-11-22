@@ -51,3 +51,6 @@ Additional key-values KV can be provided as alternating strings and values."
 ;; initialize level from env at load
 (set-log-level-from-env)
 
+;; Ensure JSON arrays are decoded as vectors so downstream consumers (tests and
+;; tools) see ARRAYP results from `yason:parse`.
+(setf yason:*parse-json-arrays-as-vectors* t)

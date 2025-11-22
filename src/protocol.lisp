@@ -69,8 +69,36 @@
                                   (setf (gethash "printLength" p) (%make-ht "type" "integer"))
                                   p))))
 
+(defun tools-descriptor-code-find ()
+  (%make-ht
+   "name" "code.find"
+   "description" "Locate the definition of a symbol (path and line) using sb-introspect."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "symbol" p)
+                         (%make-ht "type" "string" "description" "Symbol name like \"cl:mapcar\""))
+                   (setf (gethash "package" p)
+                         (%make-ht "type" "string" "description" "Optional package used when SYMBOL is unqualified"))
+                   (%make-ht "type" "object"
+                             "properties" p
+                             "required" (vector "symbol")))))
+
+(defun tools-descriptor-code-describe ()
+  (%make-ht
+   "name" "code.describe"
+   "description" "Describe a symbol: type, arglist, and documentation."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "symbol" p)
+                         (%make-ht "type" "string" "description" "Symbol name like \"cl:mapcar\""))
+                   (setf (gethash "package" p)
+                         (%make-ht "type" "string" "description" "Optional package used when SYMBOL is unqualified"))
+                   (%make-ht "type" "object"
+                             "properties" p
+                             "required" (vector "symbol")))))
+
 (defun handle-tools-list (id)
-  (let* ((tools (vector (tools-descriptor-repl))))
+  (let* ((tools (vector (tools-descriptor-repl)
+                        (tools-descriptor-code-find)
+                        (tools-descriptor-code-describe))))
     (%result id (%make-ht "tools" tools))))
 
 (defun %normalize-tool-name (name)
@@ -106,6 +134,37 @@ Returns a downcased local tool name (string)."
          (error (e)
            (%error id -32603
                    (format nil "Internal error during REPL evaluation: ~A" e)))))
+      ((member local '("find" "find_definition") :test #'string=)
+       (handler-case
+           (let* ((symbol (and args (gethash "symbol" args)))
+                  (pkg (and args (gethash "package" args))))
+             (unless (stringp symbol)
+               (return-from handle-tools-call
+                 (%error id -32602 "symbol must be a string")))
+             (multiple-value-bind (path line)
+                 (code-find-definition symbol :package pkg)
+               (if path
+                   (%result id (%make-ht "path" path "line" line))
+                   (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during code.find: ~A" e)))))
+      ((member local '("describe" "describe_symbol") :test #'string=)
+       (handler-case
+           (let* ((symbol (and args (gethash "symbol" args)))
+                  (pkg (and args (gethash "package" args))))
+             (unless (stringp symbol)
+               (return-from handle-tools-call
+                 (%error id -32602 "symbol must be a string")))
+             (multiple-value-bind (name type arglist doc)
+                 (code-describe-symbol symbol :package pkg)
+               (%result id (%make-ht "name" name
+                                     "type" type
+                                     "arglist" arglist
+                                     "documentation" doc))))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during code.describe: ~A" e)))))
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
 
