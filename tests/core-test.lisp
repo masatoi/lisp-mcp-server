@@ -8,7 +8,11 @@
 
 (deftest run-skeleton
   (testing "run returns T for skeleton"
-    (ok (eq t (mcp:run :transport :stdio)))))
+    ;; Provide empty in/out streams so the loop hits EOF immediately and doesn't
+    ;; block on *standard-input* during automated runs.
+    (let* ((in (make-string-input-stream ""))
+           (out (make-string-output-stream)))
+      (ok (eq t (mcp:run :transport :stdio :in in :out out))))))
 
 (deftest stdio-one-message
   (testing "run processes one line from :in and writes to :out"

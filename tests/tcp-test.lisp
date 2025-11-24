@@ -5,7 +5,7 @@
   (testing "serve-tcp accepts a connection and responds to initialize"
     (let ((port-var nil))
       (let ((thr (bordeaux-threads:make-thread
-                  (lambda ()
+                 (lambda ()
                     (mcp:serve-tcp :host "127.0.0.1" :port 0
                                    :on-listening (lambda (p) (setf port-var p))
                                    :accept-once t))
@@ -19,6 +19,9 @@
                (progn
                  (write-string "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n" stream)
                  (finish-output stream)
+                 ;; Half-close our write side so the server sees EOF and exits
+                 ;; the read loop even if the client crashes before closing.
+                 (ignore-errors (usocket:socket-shutdown sock :output))
                  (let ((line (read-line stream)))
                    (ok (search "\"result\"" line))))
             (ignore-errors (close stream))
@@ -41,6 +44,8 @@
                     (progn
                       (write-string "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n" stream)
                       (finish-output stream)
+                      ;; Signal EOF to server read loop after sending request.
+                      (ignore-errors (usocket:socket-shutdown sock :output))
                       (let ((line (read-line stream)))
                         (ok (search "\"result\"" line))))
                  (ignore-errors (close stream))

@@ -1,8 +1,13 @@
 ;;;; src/fs.lisp
 (in-package :lisp-mcp-server)
 
-(defparameter *project-root* (uiop:getcwd)
-  "Absolute pathname of the project root (current working directory at load time).")
+(defparameter *project-root*
+  (or (ignore-errors
+        (uiop:ensure-directory-pathname
+         (asdf:system-source-directory "lisp-mcp-server")))
+      (uiop:ensure-directory-pathname (uiop:getcwd)))
+  "Absolute pathname of the project root. Prefer the ASDF system source
+directory; fall back to the current working directory at load time.")
 
 (defparameter *hidden-prefixes* '("." ".git" ".hg" ".svn" ".cache" ".fasl"))
 (defparameter *skip-extensions* '("fasl" "ufasl" "x86f" "cfasl"))
