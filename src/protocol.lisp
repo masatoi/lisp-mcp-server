@@ -164,7 +164,7 @@ Returns a downcased local tool name (string)."
           (error (e)
             (%error id -32603
                     (format nil "Internal error during REPL evaluation: ~A" e)))))
-      ((member local '("fs.read_file" "fs.read") :test #'string=)
+      ((member local '("fs.read_file" "fs.read" "read_file" "read") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
                   (offset (and args (gethash "offset" args)))
@@ -176,7 +176,7 @@ Returns a downcased local tool name (string)."
                (%result id (%make-ht "content" content))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs.read_file: ~A" e)))))
-      ((member local '("fs.write_file" "fs.write") :test #'string=)
+      ((member local '("fs.write_file" "fs.write" "write_file" "write") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
                   (content (and args (gethash "content" args))))
@@ -187,7 +187,8 @@ Returns a downcased local tool name (string)."
              (%result id (%make-ht "success" t)))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs.write_file: ~A" e)))))
-      ((member local '("fs.list_directory" "fs.list" "fs.ls") :test #'string=)
+      ((member local '("fs.list_directory" "fs.list" "fs.ls"
+                       "list_directory" "list" "ls") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args))))
              (unless (stringp path)
