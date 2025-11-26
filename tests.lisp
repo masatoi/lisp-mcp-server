@@ -9,7 +9,8 @@
   (:import-from #:lisp-mcp-server/tests/protocol-test)
   (:import-from #:lisp-mcp-server/tests/repl-test)
   (:import-from #:lisp-mcp-server/tests/tcp-test)
-  (:import-from #:lisp-mcp-server/tests/tools-test))
+  (:import-from #:lisp-mcp-server/tests/tools-test)
+  (:import-from #:lisp-mcp-server/tests/integration-test))
 (in-package #:lisp-mcp-server/tests)
 
 (defmethod asdf:perform :after ((op asdf:test-op) (system (eql (asdf:find-system :lisp-mcp-server/tests))))
