@@ -62,25 +62,55 @@
 (defun tools-descriptor-repl ()
   (%make-ht
    "name" "repl-eval"
-   "description" "Evaluate Common Lisp forms and return the last value as printed text."
-   "inputSchema" (%make-ht
-                  "type" "object"
-                  "properties" (let ((p (make-hash-table :test #'equal)))
-                                  (setf (gethash "code" p)
-                                        (%make-ht "type" "string" "description" "Code string of one or more forms"))
-                                  (setf (gethash "package" p) (%make-ht "type" "string"))
-                                  (setf (gethash "printLevel" p) (%make-ht "type" "integer"))
-                                  (setf (gethash "printLength" p) (%make-ht "type" "integer"))
-                                  p))))
+   "description"
+   "Evaluate Common Lisp forms and return the last value as printed text.
+Provide an existing package (e.g., CL-USER) and set printLevel/printLength
+when you need to control truncation."
+   "inputSchema"
+   (%make-ht
+    "type" "object"
+    "properties"
+    (let ((p (make-hash-table :test #'equal)))
+      (setf (gethash "code" p)
+            (%make-ht "type" "string"
+                      "description"
+                      "Code string of one or more forms evaluated sequentially"))
+      (setf (gethash "package" p)
+            (%make-ht "type" "string"
+                      "description"
+                      "Existing package name (e.g., CL-USER); forms are read/evaluated
+there"))
+      (setf (gethash "printLevel" p)
+            (%make-ht "type" "integer"
+                      "description"
+                      "Integer to limit printed nesting depth (omit to print fully)"))
+      (setf (gethash "printLength" p)
+            (%make-ht "type" "integer"
+                      "description"
+                      "Integer to limit printed list length (omit to print fully)"))
+      p))))
 
 (defun tools-descriptor-fs-read ()
   (%make-ht
    "name" "fs-read-file"
-   "description" "Read a text file with optional offset and limit."
+   "description"
+   "Read a text file with optional offset and limit.
+Prefer absolute paths inside the project; offset/limit are character counts
+to avoid loading whole files."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
-                   (setf (gethash "path" p) (%make-ht "type" "string"))
-                   (setf (gethash "offset" p) (%make-ht "type" "integer"))
-                   (setf (gethash "limit" p) (%make-ht "type" "integer"))
+                   (setf (gethash "path" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Absolute path inside the project or a registered
+ASDF system"))
+                   (setf (gethash "offset" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "0-based character offset to start reading"))
+                   (setf (gethash "limit" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "Maximum characters to return; omit to read to end"))
                    (%make-ht "type" "object" "properties" p "required" (vector "path")))))
 
 (defun tools-descriptor-fs-write ()
@@ -88,27 +118,47 @@
    "name" "fs-write-file"
    "description" "Write text content to a file relative to project root."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
-                   (setf (gethash "path" p) (%make-ht "type" "string"))
-                   (setf (gethash "content" p) (%make-ht "type" "string"))
+                   (setf (gethash "path" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Relative path under the project root; absolute paths are
+rejected"))
+                   (setf (gethash "content" p)
+                         (%make-ht "type" "string"
+                                   "description" "Text content to write"))
                    (%make-ht "type" "object" "properties" p "required" (vector "path" "content")))))
 
 (defun tools-descriptor-fs-list ()
   (%make-ht
    "name" "fs-list-directory"
-   "description" "List entries in a directory, filtering hidden and build artifacts."
+   "description"
+   "List entries in a directory, filtering hidden and build artifacts.
+Use absolute paths inside the project or an ASDF system."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
-                   (setf (gethash "path" p) (%make-ht "type" "string"))
+                   (setf (gethash "path" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Absolute directory path under the project root or a registered
+ASDF system"))
                    (%make-ht "type" "object" "properties" p "required" (vector "path")))))
 
 (defun tools-descriptor-code-find ()
   (%make-ht
    "name" "code-find"
-   "description" "Locate the definition of a symbol (path and line) using sb-introspect."
+   "description"
+   "Locate the definition of a symbol (path and line) using sb-introspect.
+Quickload/load the library first; prefer package-qualified symbols or supply the
+package argument."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "symbol" p)
-                         (%make-ht "type" "string" "description" "Symbol name like \"cl:mapcar\""))
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Symbol name like \"cl:mapcar\" (package-qualified preferred)"))
                    (setf (gethash "package" p)
-                         (%make-ht "type" "string" "description" "Optional package used when SYMBOL is unqualified"))
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Optional package used when SYMBOL is unqualified; ensure the package exists
+and is loaded"))
                    (%make-ht "type" "object"
                              "properties" p
                              "required" (vector "symbol")))))
@@ -116,12 +166,20 @@
 (defun tools-descriptor-code-describe ()
   (%make-ht
    "name" "code-describe"
-   "description" "Describe a symbol: type, arglist, and documentation."
+   "description"
+   "Describe a symbol: type, arglist, and documentation.
+Ensure the defining library is loaded; pass a package or a package-qualified
+symbol to avoid resolution errors."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "symbol" p)
-                         (%make-ht "type" "string" "description" "Symbol name like \"cl:mapcar\""))
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Symbol name like \"cl:mapcar\" (package-qualified preferred)"))
                    (setf (gethash "package" p)
-                         (%make-ht "type" "string" "description" "Optional package used when SYMBOL is unqualified"))
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Optional package used when SYMBOL is unqualified; ensure the package exists
+and is loaded"))
                    (%make-ht "type" "object"
                              "properties" p
                              "required" (vector "symbol")))))
