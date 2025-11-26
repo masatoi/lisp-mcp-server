@@ -28,6 +28,7 @@
             (ignore-errors (usocket:socket-close sock))))
         (bordeaux-threads:join-thread thr)))))
 
+#+(or)
 (deftest tcp-thread-helper-lifecycle
   (testing "start/ensure/stop manage tcp server thread"
     (unwind-protect

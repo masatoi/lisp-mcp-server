@@ -33,10 +33,13 @@
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
-             (result (gethash "result" obj)))
+             (result (gethash "result" obj))
+             (content (gethash "content" result)))
         (ok (string= (gethash "jsonrpc" obj) "2.0"))
-        (ok (stringp (gethash "content" result)))
-        (ok (> (length (gethash "content" result)) 0))))))
+        (ok (arrayp content))
+        (let ((first (aref content 0)))
+          (ok (string= (gethash "type" first) "text"))
+          (ok (> (length (gethash "text" first)) 0)))))))
 
 (deftest tools-call-fs-write-and-readback
   (testing "tools/call fs-write-file writes then fs-read-file reads"
@@ -50,8 +53,12 @@
                (ok (gethash "success" result)))
              (let* ((resp2 (mcp:process-json-line req-read))
                     (obj2 (yason:parse resp2))
-                    (result2 (gethash "result" obj2)))
-               (ok (string= (gethash "content" result2) "hi"))))
+                    (result2 (gethash "result" obj2))
+                    (content (gethash "content" result2)))
+               (ok (arrayp content))
+               (let ((first (aref content 0)))
+                 (ok (string= (gethash "type" first) "text"))
+                 (ok (string= (gethash "text" first) "hi")))))
         (ignore-errors (delete-file "tmp-tools-write.txt"))))))
 
 (deftest tools-call-fs-list
@@ -60,9 +67,12 @@
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj))
-             (entries (gethash "entries" result)))
+             (entries (gethash "entries" result))
+             (content (gethash "content" result)))
         (ok (arrayp entries))
-        (ok (> (length entries) 0))))))
+        (ok (> (length entries) 0))
+        (ok (arrayp content))
+        (ok (string= (gethash "type" (aref content 0)) "text"))))))
 
 (deftest tools-call-code-find
   (testing "tools/call code-find returns path and line"

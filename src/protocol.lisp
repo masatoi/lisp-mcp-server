@@ -34,6 +34,10 @@
     (when data (setf (gethash "data" err) data))
     obj))
 
+(defun %text-content (text)
+  "Return a one-element content vector with TEXT as a text part."
+  (vector (%make-ht "type" "text" "text" text)))
+
 (defun handle-initialize (state id params)
   (declare (ignore state))
   (let* ((client-ver (and params (gethash "protocolVersion" params)))
@@ -158,12 +162,10 @@ Returns a downcased local tool name (string)."
                             :print-level pl
                             :print-length plen)
                (declare (ignore _))
-               (let* ((item (%make-ht "type" "text" "text" printed))
-                      (content (make-array 1 :initial-contents (list item))))
-                 (%result id (%make-ht "content" content)))))
-        (error (e)
-          (%error id -32603
-                  (format nil "Internal error during REPL evaluation: ~A" e)))))
+               (%result id (%make-ht "content" (%text-content printed)))))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during REPL evaluation: ~A" e)))))
       ((member local '("fs-read-file" "fs_read_file" "read_file" "read") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
@@ -172,8 +174,13 @@ Returns a downcased local tool name (string)."
              (unless (stringp path)
                (return-from handle-tools-call
                  (%error id -32602 "path must be a string")))
-             (let ((content (fs-read-file path :offset offset :limit limit)))
-               (%result id (%make-ht "content" content))))
+             (let* ((content-string (fs-read-file path :offset offset :limit limit)))
+               (%result id (%make-ht
+                            "content" (%text-content content-string)
+                            "text" content-string
+                            "path" path
+                            "offset" offset
+                            "limit" limit))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs-read-file: ~A" e)))))
       ((member local '("fs-write-file" "fs_write_file" "write_file" "write") :test #'string=)
@@ -183,8 +190,13 @@ Returns a downcased local tool name (string)."
              (unless (and (stringp path) (stringp content))
                (return-from handle-tools-call
                  (%error id -32602 "path and content must be strings")))
-              (fs-write-file path content)
-              (%result id (%make-ht "success" t)))
+             (fs-write-file path content)
+             (%result id (%make-ht
+                          "success" t
+                          "content" (%text-content
+                                     (format nil "Wrote ~A (~D chars)" path (length content)))
+                          "path" path
+                          "bytes" (length content))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs_write_file: ~A" e)))))
       ((member local '("fs-list-directory" "fs_list_directory" "list_directory"
@@ -194,8 +206,22 @@ Returns a downcased local tool name (string)."
              (unless (stringp path)
                (return-from handle-tools-call
                  (%error id -32602 "path must be a string")))
-              (let ((entries (fs-list-directory path)))
-                (%result id (%make-ht "entries" entries))))
+             (let* ((entries (fs-list-directory path))
+                    (summary-lines (map 'list
+                                        (lambda (h)
+                                          (format nil "~A (~A)"
+                                                  (gethash "name" h)
+                                                  (gethash "type" h)))
+                                        entries))
+                    (summary (if summary-lines
+                                 (format nil "~{~A~%~}" summary-lines)
+                                 ""))
+                    (content (%text-content summary)))
+               (%result id (%make-ht
+                            "entries" entries
+                            "count" (length entries)
+                            "content" content
+                            "path" path))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs-list-directory: ~A" e)))))
       ((member local '("code-find" "code_find" "find" "find_definition") :test #'string=)
@@ -207,9 +233,14 @@ Returns a downcased local tool name (string)."
                  (%error id -32602 "symbol must be a string")))
              (multiple-value-bind (path line)
                  (code-find-definition symbol :package pkg)
-                (if path
-                    (%result id (%make-ht "path" path "line" line))
-                    (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
+               (if path
+                   (%result id (%make-ht
+                                "path" path
+                                "line" line
+                                "content" (%text-content
+                                            (format nil "~A defined in ~A at line ~D"
+                                                    symbol path line))))
+                   (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
          (error (e)
            (%error id -32603
                    (format nil "Internal error during code-find: ~A" e)))))
@@ -222,10 +253,14 @@ Returns a downcased local tool name (string)."
                  (%error id -32602 "symbol must be a string")))
              (multiple-value-bind (name type arglist doc)
                  (code-describe-symbol symbol :package pkg)
-                (%result id (%make-ht "name" name
-                                      "type" type
-                                      "arglist" arglist
-                                      "documentation" doc))))
+               (%result id (%make-ht
+                            "name" name
+                            "type" type
+                            "arglist" arglist
+                            "documentation" doc
+                            "content" (%text-content
+                                       (format nil "~A :: ~A~@[ ~A~]~%~@[~A~]"
+                                               name type arglist doc))))))
          (error (e)
            (%error id -32603
                    (format nil "Internal error during code-describe: ~A" e)))))
