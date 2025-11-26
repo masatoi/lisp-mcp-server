@@ -51,3 +51,78 @@
       (ok (string= (gethash "jsonrpc" obj4) "2.0"))
       (ok (stringp text4))
       (ok (search "0.1.0" text4)))))
+
+(deftest fs-write-then-readback
+  (testing "write file then read it back via tools/call"
+    (let* ((path "tmp-integration-write.txt")
+           (req-write (format nil "{\"jsonrpc\":\"2.0\",\"id\":110,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-write-file\",\"arguments\":{\"path\":\"~A\",\"content\":\"hello\"}}}" path))
+           (req-read  (format nil "{\"jsonrpc\":\"2.0\",\"id\":111,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"~A\"}}}" path)))
+      (unwind-protect
+           (progn
+             (let* ((resp-w (process-json-line req-write))
+                    (obj-w (parse resp-w))
+                    (res-w (gethash "result" obj-w)))
+               (ok (gethash "success" res-w)))
+             (let* ((resp-r (process-json-line req-read))
+                    (obj-r (parse resp-r))
+                    (res-r (gethash "result" obj-r))
+                    (content (gethash "content" res-r))
+                    (first (and (arrayp content) (> (length content) 0) (aref content 0))))
+               (ok (string= (gethash "jsonrpc" obj-r) "2.0"))
+               (ok (string= (gethash "type" first) "text"))
+               (ok (string= (gethash "text" first) "hello"))))
+        (ignore-errors (delete-file path))))))
+
+(deftest list-then-read
+  (testing "list directory then read discovered source file"
+    (let* ((req-list "{\"jsonrpc\":\"2.0\",\"id\":120,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-list-directory\",\"arguments\":{\"path\":\".\"}}}")
+           (resp-list (process-json-line req-list))
+           (obj-list (parse resp-list))
+           (entries (gethash "entries" (gethash "result" obj-list)))
+           (src-dir (find-if (lambda (e) (string= (gethash "name" e) "src")) entries))
+           ;; read a known file after confirming directory listing works
+           (req-read "{\"jsonrpc\":\"2.0\",\"id\":121,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":120}}}"))
+      (ok (arrayp entries))
+      (ok src-dir)
+      (let* ((resp (process-json-line req-read))
+             (obj (parse resp))
+             (res (gethash "result" obj))
+             (content (gethash "content" res))
+             (first (and (arrayp content) (> (length content) 0) (aref content 0))))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok (string= (gethash "type" first) "text"))
+        (ok (> (length (gethash "text" first)) 0))))))
+
+(deftest namespaced-code-describe
+  (testing "namespaced tool name with package parameter"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":130,\"method\":\"tools/call\",\"params\":{\"name\":\"lisp_mcp.code-describe\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
+             (res (gethash "result" obj)))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok res)
+        (ok (string= (gethash "type" res) "function"))
+        (ok (stringp (gethash "arglist" res)))
+        (ok (search "(" (gethash "arglist" res)))))))
+
+(deftest repl-eval-printlength
+  (testing "repl-eval honors printLength for long lists"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":140,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(list 1 2 3 4)\",\"printLength\":2}}}"))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
+             (res (gethash "result" obj))
+             (content (gethash "content" res))
+             (first (and (arrayp content) (> (length content) 0) (aref content 0)))
+             (text (and first (gethash "text" first))))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok (stringp text))
+        (ok (search "..." text))))))
+
+(deftest fs-read-disallowed-path
+  (testing "fs-read-file rejects paths outside allow-list"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":150,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"/etc/hosts\"}}}"))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
+             (err (gethash "error" obj)))
+        (ok err)
+        (ok (stringp (gethash "message" err)))))))
