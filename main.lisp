@@ -1,7 +1,7 @@
 ;;;; main.lisp
 
 (defpackage #:lisp-mcp-server/main
-  (:nicknames #:lisp-mcp-server/main #:mcp)
+  (:nicknames #:lisp-mcp-server/main #:lisp-mcp-server #:mcp)
   (:use #:cl)
   (:import-from #:lisp-mcp-server/src/core
                 #:version)
