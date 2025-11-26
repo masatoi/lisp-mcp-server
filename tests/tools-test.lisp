@@ -9,11 +9,11 @@
            (result (gethash "result" obj))
            (tools (gethash "tools" result))
            (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl-eval")) tools))
-           (fs-read (find-if (lambda (tool) (string= (gethash "name" tool) "fs.read_file")) tools))
-           (fs-write (find-if (lambda (tool) (string= (gethash "name" tool) "fs.write_file")) tools))
-           (fs-list (find-if (lambda (tool) (string= (gethash "name" tool) "fs.list_directory")) tools))
-           (code-find (find-if (lambda (tool) (string= (gethash "name" tool) "code.find")) tools))
-           (code-describe (find-if (lambda (tool) (string= (gethash "name" tool) "code.describe")) tools)))
+           (fs-read (find-if (lambda (tool) (string= (gethash "name" tool) "fs-read-file")) tools))
+           (fs-write (find-if (lambda (tool) (string= (gethash "name" tool) "fs-write-file")) tools))
+           (fs-list (find-if (lambda (tool) (string= (gethash "name" tool) "fs-list-directory")) tools))
+           (code-find (find-if (lambda (tool) (string= (gethash "name" tool) "code-find")) tools))
+           (code-describe (find-if (lambda (tool) (string= (gethash "name" tool) "code-describe")) tools)))
       (ok (stringp resp))
       (ok tools)
       (ok repl)
@@ -29,8 +29,8 @@
         (ok (string= (gethash "type" code) "string"))))))
 
 (deftest tools-call-fs-read
-  (testing "tools/call fs.read_file returns content"
-    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.read_file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))
+  (testing "tools/call fs-read-file returns content"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj)))
@@ -39,9 +39,9 @@
         (ok (> (length (gethash "content" result)) 0))))))
 
 (deftest tools-call-fs-write-and-readback
-  (testing "tools/call fs.write_file writes then fs.read_file reads"
-    (let* ((req-write "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.write_file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\",\"content\":\"hi\"}}}")
-           (req-read  "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.read_file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\"}}}"))
+  (testing "tools/call fs-write-file writes then fs-read-file reads"
+    (let* ((req-write "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-write-file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\",\"content\":\"hi\"}}}")
+           (req-read  "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\"}}}"))
       (unwind-protect
            (progn
              (let* ((resp (mcp:process-json-line req-write))
@@ -55,8 +55,8 @@
         (ignore-errors (delete-file "tmp-tools-write.txt"))))))
 
 (deftest tools-call-fs-list
-  (testing "tools/call fs.list_directory lists entries"
-    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"fs.list_directory\",\"arguments\":{\"path\":\".\"}}}"))
+  (testing "tools/call fs-list-directory lists entries"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-list-directory\",\"arguments\":{\"path\":\".\"}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj))
@@ -65,8 +65,8 @@
         (ok (> (length entries) 0))))))
 
 (deftest tools-call-code-find
-  (testing "tools/call code.find returns path and line"
-    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"code.find\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
+  (testing "tools/call code-find returns path and line"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"code-find\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj)))
@@ -75,8 +75,8 @@
         (ok (integerp (gethash "line" result)))))))
 
 (deftest tools-call-code-describe
-  (testing "tools/call code.describe returns symbol metadata"
-    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"code.describe\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
+  (testing "tools/call code-describe returns symbol metadata"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"code-describe\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
       (let* ((resp (mcp:process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj)))

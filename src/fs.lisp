@@ -84,12 +84,21 @@ Returns T on success."
   (let ((pn (%ensure-write-path path)))
     (%write-string-to-file pn content)))
 
+(defun %entry-name (path)
+  "Return display name for PATH, trimming trailing slash on directories."
+  (let* ((namestr (file-namestring path))
+         (trimmed (and namestr (string-right-trim "/" namestr))))
+    (if (and trimmed (plusp (length trimmed)))
+        trimmed
+        (let* ((dir (pathname-directory path))
+               (leaf (car (last dir))))
+          (and leaf (string leaf))))))
+
 (defun %should-skip-entry-p (path)
-  (let* ((name (pathname-name path))
-         (type (pathname-type path))
-         (str (and name (string name))))
-    (or (null str)
-        (some (lambda (pref) (uiop:string-prefix-p pref str)) *hidden-prefixes*)
+  (let* ((name (%entry-name path))
+         (type (pathname-type path)))
+    (or (null name)
+        (some (lambda (pref) (uiop:string-prefix-p pref name)) *hidden-prefixes*)
         (and type (member (string-downcase type) *skip-extensions* :test #'string=)))))
 
 (defun fs-list-directory (path)
@@ -105,8 +114,9 @@ Returns a vector of hash-tables with keys \"name\" and \"type\" (file|directory)
            (results '()))
       (dolist (p entries)
         (unless (%should-skip-entry-p p)
-          (let ((h (make-hash-table :test #'equal)))
-            (setf (gethash "name" h) (file-namestring p)
+          (let* ((h (make-hash-table :test #'equal))
+                 (name (%entry-name p)))
+            (setf (gethash "name" h) name
                   (gethash "type" h) (if (uiop:directory-pathname-p p) "directory" "file"))
             (push h results))))
       (coerce (nreverse results) 'vector))))

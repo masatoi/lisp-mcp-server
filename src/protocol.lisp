@@ -71,7 +71,7 @@
 
 (defun tools-descriptor-fs-read ()
   (%make-ht
-   "name" "fs.read_file"
+   "name" "fs-read-file"
    "description" "Read a text file with optional offset and limit."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "path" p) (%make-ht "type" "string"))
@@ -81,7 +81,7 @@
 
 (defun tools-descriptor-fs-write ()
   (%make-ht
-   "name" "fs.write_file"
+   "name" "fs-write-file"
    "description" "Write text content to a file relative to project root."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "path" p) (%make-ht "type" "string"))
@@ -90,7 +90,7 @@
 
 (defun tools-descriptor-fs-list ()
   (%make-ht
-   "name" "fs.list_directory"
+   "name" "fs-list-directory"
    "description" "List entries in a directory, filtering hidden and build artifacts."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "path" p) (%make-ht "type" "string"))
@@ -98,7 +98,7 @@
 
 (defun tools-descriptor-code-find ()
   (%make-ht
-   "name" "code.find"
+   "name" "code-find"
    "description" "Locate the definition of a symbol (path and line) using sb-introspect."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "symbol" p)
@@ -111,7 +111,7 @@
 
 (defun tools-descriptor-code-describe ()
   (%make-ht
-   "name" "code.describe"
+   "name" "code-describe"
    "description" "Describe a symbol: type, arglist, and documentation."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "symbol" p)
@@ -161,10 +161,10 @@ Returns a downcased local tool name (string)."
                (let* ((item (%make-ht "type" "text" "text" printed))
                       (content (make-array 1 :initial-contents (list item))))
                  (%result id (%make-ht "content" content)))))
-          (error (e)
-            (%error id -32603
-                    (format nil "Internal error during REPL evaluation: ~A" e)))))
-      ((member local '("fs.read_file" "fs.read" "read_file" "read") :test #'string=)
+        (error (e)
+          (%error id -32603
+                  (format nil "Internal error during REPL evaluation: ~A" e)))))
+      ((member local '("fs-read-file" "fs_read_file" "read_file" "read") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
                   (offset (and args (gethash "offset" args)))
@@ -175,30 +175,30 @@ Returns a downcased local tool name (string)."
              (let ((content (fs-read-file path :offset offset :limit limit)))
                (%result id (%make-ht "content" content))))
          (error (e)
-           (%error id -32603 (format nil "Internal error during fs.read_file: ~A" e)))))
-      ((member local '("fs.write_file" "fs.write" "write_file" "write") :test #'string=)
+           (%error id -32603 (format nil "Internal error during fs-read-file: ~A" e)))))
+      ((member local '("fs-write-file" "fs_write_file" "write_file" "write") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
                   (content (and args (gethash "content" args))))
              (unless (and (stringp path) (stringp content))
                (return-from handle-tools-call
                  (%error id -32602 "path and content must be strings")))
-             (fs-write-file path content)
-             (%result id (%make-ht "success" t)))
+              (fs-write-file path content)
+              (%result id (%make-ht "success" t)))
          (error (e)
-           (%error id -32603 (format nil "Internal error during fs.write_file: ~A" e)))))
-      ((member local '("fs.list_directory" "fs.list" "fs.ls"
-                       "list_directory" "list" "ls") :test #'string=)
+           (%error id -32603 (format nil "Internal error during fs_write_file: ~A" e)))))
+      ((member local '("fs-list-directory" "fs_list_directory" "list_directory"
+                       "list" "ls") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args))))
              (unless (stringp path)
                (return-from handle-tools-call
                  (%error id -32602 "path must be a string")))
-             (let ((entries (fs-list-directory path)))
-               (%result id (%make-ht "entries" entries))))
+              (let ((entries (fs-list-directory path)))
+                (%result id (%make-ht "entries" entries))))
          (error (e)
-           (%error id -32603 (format nil "Internal error during fs.list_directory: ~A" e)))))
-      ((member local '("find" "find_definition") :test #'string=)
+           (%error id -32603 (format nil "Internal error during fs-list-directory: ~A" e)))))
+      ((member local '("code-find" "code_find" "find" "find_definition") :test #'string=)
        (handler-case
            (let* ((symbol (and args (gethash "symbol" args)))
                   (pkg (and args (gethash "package" args))))
@@ -207,13 +207,13 @@ Returns a downcased local tool name (string)."
                  (%error id -32602 "symbol must be a string")))
              (multiple-value-bind (path line)
                  (code-find-definition symbol :package pkg)
-               (if path
-                   (%result id (%make-ht "path" path "line" line))
-                   (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
+                (if path
+                    (%result id (%make-ht "path" path "line" line))
+                    (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
          (error (e)
            (%error id -32603
-                   (format nil "Internal error during code.find: ~A" e)))))
-      ((member local '("describe" "describe_symbol") :test #'string=)
+                   (format nil "Internal error during code-find: ~A" e)))))
+      ((member local '("code-describe" "code_describe" "describe" "describe_symbol") :test #'string=)
        (handler-case
            (let* ((symbol (and args (gethash "symbol" args)))
                   (pkg (and args (gethash "package" args))))
@@ -222,13 +222,13 @@ Returns a downcased local tool name (string)."
                  (%error id -32602 "symbol must be a string")))
              (multiple-value-bind (name type arglist doc)
                  (code-describe-symbol symbol :package pkg)
-               (%result id (%make-ht "name" name
-                                     "type" type
-                                     "arglist" arglist
-                                     "documentation" doc))))
+                (%result id (%make-ht "name" name
+                                      "type" type
+                                      "arglist" arglist
+                                      "documentation" doc))))
          (error (e)
            (%error id -32603
-                   (format nil "Internal error during code.describe: ~A" e)))))
+                   (format nil "Internal error during code-describe: ~A" e)))))
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
 
