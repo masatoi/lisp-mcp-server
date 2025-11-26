@@ -1,5 +1,10 @@
 ;;;; tests/repl-test.lisp
-(in-package :lisp-mcp-server/tests)
+
+(defpackage #:lisp-mcp-server/tests/repl-test
+  (:use #:cl #:rove)
+  (:import-from #:lisp-mcp-server/src/repl #:repl-eval))
+
+(in-package #:lisp-mcp-server/tests/repl-test)
 
 (deftest repl-eval-simple
   (testing "(+ 1 2) returns 3 as a string"

@@ -1,5 +1,11 @@
 ;;;; src/repl.lisp
-(in-package :lisp-mcp-server)
+
+(defpackage #:lisp-mcp-server/src/repl
+  (:use #:cl)
+  (:import-from #:uiop #:print-backtrace)
+  (:export #:repl-eval #:*default-eval-package*))
+
+(in-package #:lisp-mcp-server/src/repl)
 
 (defparameter *default-eval-package* (find-package :cl-user)
   "Default package in which `repl-eval` evaluates forms.")

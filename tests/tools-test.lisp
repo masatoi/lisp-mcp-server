@@ -1,11 +1,17 @@
 ;;;; tests/tools-test.lisp
-(in-package :lisp-mcp-server/tests)
+
+(defpackage #:lisp-mcp-server/tests/tools-test
+  (:use #:cl #:rove)
+  (:import-from #:lisp-mcp-server/src/protocol #:process-json-line)
+  (:import-from #:yason #:parse))
+
+(in-package #:lisp-mcp-server/tests/tools-test)
 
 (deftest tools-list-includes-repl-eval
   (testing "tools/list returns repl.eval with input schema"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}")
-           (resp (mcp:process-json-line req))
-           (obj (yason:parse resp))
+           (resp (process-json-line req))
+           (obj (parse resp))
            (result (gethash "result" obj))
            (tools (gethash "tools" result))
            (repl (find-if (lambda (tool) (string= (gethash "name" tool) "repl-eval")) tools))
@@ -31,8 +37,8 @@
 (deftest tools-call-fs-read
   (testing "tools/call fs-read-file returns content"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))
-      (let* ((resp (mcp:process-json-line req))
-             (obj (yason:parse resp))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
              (result (gethash "result" obj))
              (content (gethash "content" result)))
         (ok (string= (gethash "jsonrpc" obj) "2.0"))
@@ -47,12 +53,12 @@
            (req-read  "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"tmp-tools-write.txt\"}}}"))
       (unwind-protect
            (progn
-             (let* ((resp (mcp:process-json-line req-write))
-                    (obj (yason:parse resp))
+             (let* ((resp (process-json-line req-write))
+                    (obj (parse resp))
                     (result (gethash "result" obj)))
                (ok (gethash "success" result)))
-             (let* ((resp2 (mcp:process-json-line req-read))
-                    (obj2 (yason:parse resp2))
+             (let* ((resp2 (process-json-line req-read))
+                    (obj2 (parse resp2))
                     (result2 (gethash "result" obj2))
                     (content (gethash "content" result2)))
                (ok (arrayp content))
@@ -64,8 +70,8 @@
 (deftest tools-call-fs-list
   (testing "tools/call fs-list-directory lists entries"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-list-directory\",\"arguments\":{\"path\":\".\"}}}"))
-      (let* ((resp (mcp:process-json-line req))
-             (obj (yason:parse resp))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
              (result (gethash "result" obj))
              (entries (gethash "entries" result))
              (content (gethash "content" result)))
@@ -77,8 +83,8 @@
 (deftest tools-call-code-find
   (testing "tools/call code-find returns path and line"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"code-find\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
-      (let* ((resp (mcp:process-json-line req))
-             (obj (yason:parse resp))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
              (result (gethash "result" obj)))
         (ok (string= (gethash "jsonrpc" obj) "2.0"))
         (ok (string= (gethash "path" result) "src/core.lisp"))
@@ -87,8 +93,8 @@
 (deftest tools-call-code-describe
   (testing "tools/call code-describe returns symbol metadata"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"code-describe\",\"arguments\":{\"symbol\":\"lisp-mcp-server:version\"}}}"))
-      (let* ((resp (mcp:process-json-line req))
-             (obj (yason:parse resp))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
              (result (gethash "result" obj)))
         (ok (string= (gethash "jsonrpc" obj) "2.0"))
         (ok (string= (gethash "type" result) "function"))
@@ -98,8 +104,8 @@
 (deftest tools-call-repl-eval
   (testing "tools/call executes repl.eval and returns text content"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(+ 1 2)\"}}}"))
-      (let* ((resp (mcp:process-json-line req))
-             (obj (yason:parse resp))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
              (result (gethash "result" obj))
              (content (and result (gethash "content" result)))
              (first (and (arrayp content) (> (length content) 0) (aref content 0))))
@@ -112,7 +118,7 @@
 (deftest tools-call-namespaced-name
   (testing "namespaced tool name like lisp_mcp.repl-eval is accepted"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"lisp_mcp.repl-eval\",\"arguments\":{\"code\":\"(+ 2 3)\"}}}"))
-      (let* ((resp (mcp:process-json-line req))
+      (let* ((resp (process-json-line req))
              (obj (yason:parse resp))
              (result (gethash "result" obj))
              (content (and result (gethash "content" result)))

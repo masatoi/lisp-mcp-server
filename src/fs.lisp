@@ -1,5 +1,26 @@
 ;;;; src/fs.lisp
-(in-package :lisp-mcp-server)
+
+(defpackage #:lisp-mcp-server/src/fs
+  (:use #:cl)
+  (:import-from #:uiop
+                #:ensure-directory-pathname
+                #:getcwd
+                #:subpathp
+                #:ensure-pathname
+                #:merge-pathnames*
+                #:read-file-string
+                #:directory
+                #:directory-exists-p
+                #:absolute-pathname-p)
+  (:import-from #:uiop/utility #:string-prefix-p)
+  (:import-from #:asdf #:registered-systems #:system-source-directory)
+  (:import-from #:uiop/filesystem #:ensure-directories-exist)
+  (:export #:*project-root*
+           #:fs-read-file
+           #:fs-write-file
+           #:fs-list-directory))
+
+(in-package #:lisp-mcp-server/src/fs)
 
 (defparameter *project-root*
   (or (ignore-errors

@@ -34,14 +34,9 @@ Load and run from an existing REPL:
 
 ```lisp
 (ql:quickload :lisp-mcp-server)
-(asdf:load-system :lisp-mcp-server)
 
-;; Start TCP transport on an ephemeral port, print chosen port
-(lisp-mcp-server:run :transport :tcp
-                     :port 12345
-                     :accept-once nil
-                     :on-listening (lambda (p)
-                                     (format t "~&port=~A~%" p)))
+;; Start TCP transport on an ephemeral port, print chosen port. This make a new thread.
+(lisp-mcp-server:start-tcp-server-thread :port 12345)
 ```
 
 Or run a minimal stdio loop (one JSON‑RPC line per request):
@@ -101,13 +96,10 @@ MCP_LOG_LEVEL=debug sbcl --eval '(ql:quickload :lisp-mcp-server)' ...
 ```
 
 ## Running Tests
-This project uses Rove and ASDF’s `test-op`.
 
-From a REPL with Quicklisp:
-
-```lisp
-(asdf:load-asd #P"lisp-mcp-server.asd")
-(asdf:test-system "lisp-mcp-server")
+```sh
+ros install fukamachi/rove
+rove lisp-mcp-server.asd
 ```
 
 What’s covered:

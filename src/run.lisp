@@ -1,5 +1,13 @@
 ;;;; src/run.lisp
-(in-package :lisp-mcp-server)
+
+(defpackage #:lisp-mcp-server/src/run
+  (:use #:cl)
+  (:import-from #:lisp-mcp-server/src/log #:log-event)
+  (:import-from #:lisp-mcp-server/src/protocol #:process-json-line #:make-state)
+  (:import-from #:lisp-mcp-server/src/tcp #:serve-tcp)
+  (:export #:run))
+
+(in-package #:lisp-mcp-server/src/run)
 
 ;; MVP placeholder: provide a minimal RUN entry point signature only.
 ;; Real transport/protocol handling will be implemented TDD-first later.

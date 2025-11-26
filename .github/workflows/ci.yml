@@ -21,8 +21,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          ros install rove
+          ros install rove masatoi/lisp-mcp-server
 
       - name: Run Tests
         run: |
-          ros -e "(asdf:test-system :lisp-mcp-server/tests)"
+          rove lisp-mcp-server.asd

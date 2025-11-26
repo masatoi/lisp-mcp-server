@@ -1,14 +1,26 @@
 ;;;; tests/tcp-test.lisp
-(in-package :lisp-mcp-server/tests)
+
+(defpackage #:lisp-mcp-server/tests/tcp-test
+  (:use #:cl #:rove)
+  (:import-from #:lisp-mcp-server/src/tcp
+                #:serve-tcp
+                #:start-tcp-server-thread
+                #:ensure-tcp-server-thread
+                #:stop-tcp-server-thread
+                #:tcp-server-running-p)
+  (:import-from #:bordeaux-threads #:make-thread #:join-thread)
+  (:import-from #:usocket))
+
+(in-package #:lisp-mcp-server/tests/tcp-test)
 
 (deftest tcp-serve-initialize
   (testing "serve-tcp accepts a connection and responds to initialize"
     (let ((port-var nil))
-      (let ((thr (bordeaux-threads:make-thread
-                 (lambda ()
-                    (mcp:serve-tcp :host "127.0.0.1" :port 0
-                                   :on-listening (lambda (p) (setf port-var p))
-                                   :accept-once t))
+      (let ((thr (make-thread
+                  (lambda ()
+                    (serve-tcp :host "127.0.0.1" :port 0
+                               :on-listening (lambda (p) (setf port-var p))
+                               :accept-once t))
                   :name "tcp-test-server")))
         (loop repeat 200 until port-var do (sleep 0.01))
         (ok port-var)
@@ -26,7 +38,7 @@
                    (ok (search "\"result\"" line))))
             (ignore-errors (close stream))
             (ignore-errors (usocket:socket-close sock))))
-        (bordeaux-threads:join-thread thr)))))
+        (join-thread thr)))))
 
 #+(or)
 (deftest tcp-thread-helper-lifecycle
@@ -34,9 +46,9 @@
     (unwind-protect
          (progn
            (multiple-value-bind (thr port)
-               (mcp:start-tcp-server-thread :host "127.0.0.1" :port 0 :accept-once nil)
+               (start-tcp-server-thread :host "127.0.0.1" :port 0 :accept-once nil)
              (ok thr)
-             (ok (mcp:tcp-server-running-p))
+             (ok (tcp-server-running-p))
              (ok (integerp port))
              (let* ((sock (usocket:socket-connect "127.0.0.1" port
                                                   :element-type 'character))
@@ -52,7 +64,7 @@
                  (ignore-errors (close stream))
                  (ignore-errors (usocket:socket-close sock))))
              (ok (eq :already-running
-                     (mcp:ensure-tcp-server-thread :host "127.0.0.1" :port port
-                                                   :accept-once nil)))))
-      (mcp:stop-tcp-server-thread))
-    (ok (not (mcp:tcp-server-running-p)))))
+                     (ensure-tcp-server-thread :host "127.0.0.1" :port port
+                                               :accept-once nil)))))
+      (stop-tcp-server-thread))
+    (ok (not (tcp-server-running-p)))))

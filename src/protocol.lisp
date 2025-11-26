@@ -1,5 +1,25 @@
 ;;;; src/protocol.lisp
-(in-package :lisp-mcp-server)
+
+(defpackage #:lisp-mcp-server/src/protocol
+  (:use #:cl)
+  (:import-from #:lisp-mcp-server/src/core #:version)
+  (:import-from #:lisp-mcp-server/src/log #:log-event)
+  (:import-from #:lisp-mcp-server/src/repl #:repl-eval)
+  (:import-from #:lisp-mcp-server/src/fs
+                #:fs-read-file #:fs-write-file #:fs-list-directory)
+  (:import-from #:lisp-mcp-server/src/code
+                #:code-find-definition #:code-describe-symbol)
+  (:import-from #:yason #:encode #:parse)
+  (:export
+   #:+protocol-version+
+   #:+supported-protocol-versions+
+   #:server-state
+   #:initialized-p
+   #:client-info
+   #:make-state
+   #:process-json-line))
+
+(in-package #:lisp-mcp-server/src/protocol)
 
 (defparameter +protocol-version+ "2025-06-18")
 (defparameter +supported-protocol-versions+

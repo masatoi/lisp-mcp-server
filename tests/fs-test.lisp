@@ -1,5 +1,13 @@
 ;;;; tests/fs-test.lisp
-(in-package :lisp-mcp-server/tests)
+
+(defpackage #:lisp-mcp-server/tests/fs-test
+  (:use #:cl #:rove)
+  (:import-from #:lisp-mcp-server/src/fs
+                #:fs-read-file
+                #:fs-write-file
+                #:fs-list-directory))
+
+(in-package #:lisp-mcp-server/tests/fs-test)
 
 (deftest fs-read-file-project
   (testing "fs-read-file reads project file with content"

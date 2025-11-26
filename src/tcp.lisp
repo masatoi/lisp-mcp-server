@@ -1,5 +1,21 @@
 ;;;; src/tcp.lisp
-(in-package :lisp-mcp-server)
+
+(defpackage #:lisp-mcp-server/src/tcp
+  (:use #:cl)
+  (:import-from #:lisp-mcp-server/src/log #:log-event)
+  (:import-from #:lisp-mcp-server/src/protocol #:make-state #:process-json-line)
+  (:import-from #:bordeaux-threads #:thread-alive-p #:make-thread #:destroy-thread)
+  (:import-from #:usocket)
+  (:export
+   #:*tcp-server-thread*
+   #:*tcp-server-port*
+   #:tcp-server-running-p
+   #:start-tcp-server-thread
+   #:ensure-tcp-server-thread
+   #:stop-tcp-server-thread
+   #:serve-tcp))
+
+(in-package #:lisp-mcp-server/src/tcp)
 
 (defparameter *tcp-server-thread* nil
   "Background TCP server thread created by START-TCP-SERVER-THREAD.")

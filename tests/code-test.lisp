@@ -1,5 +1,12 @@
 ;;;; tests/code-test.lisp
-(in-package :lisp-mcp-server/tests)
+
+(defpackage #:lisp-mcp-server/tests/code-test
+  (:use #:cl #:rove)
+  (:import-from #:lisp-mcp-server/src/code
+                #:code-find-definition
+                #:code-describe-symbol))
+
+(in-package #:lisp-mcp-server/tests/code-test)
 
 (deftest code-find-definition-returns-path-and-line
   (testing "code.find-definition returns relative path and positive line"
