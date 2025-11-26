@@ -12,7 +12,10 @@ clients to drive Common Lisp development via MCP.
 ## Features
 - JSON‑RPC 2.0 request/response framing (one message per line)
 - MCP initialize handshake with capability discovery
-- Tools API with one built-in tool: `repl-eval`
+- Tools API
+  - `repl-eval` — evaluate forms
+  - `fs-read-file` / `fs-write-file` / `fs-list-directory` — project-scoped file access with allow‑list
+  - `code-find` / `code-describe` — sb-introspect based symbol lookup/metadata
 - Transports: `:stdio` and `:tcp`
 - Structured JSON logs with level control via env var
 - Rove test suite wired through ASDF `test-op`
@@ -85,6 +88,55 @@ Response (excerpt):
 {"result":{"content":[{"type":"text","text":"3"}]}}
 ```
 
+### `fs-read-file`
+Read text from an allow‑listed path.
+
+Input:
+- `path` (string, required): project‑relative or absolute inside a registered ASDF system’s source tree
+- `offset` / `limit` (integer, optional): substring window
+
+Policy: reads are allowed only when the resolved path is under the project root or under `asdf:system-source-directory` of a registered system.
+
+### `fs-write-file`
+Write text to a file under the project root (directories auto-created).
+
+Input:
+- `path` (string, required): **must be relative** to the project root
+- `content` (string, required)
+
+Policy: writes outside the project root are rejected.
+
+### `fs-list-directory`
+List entries in a directory (files/directories only, skips hidden and build artifacts).
+
+Input:
+- `path` (string, required): project root or an ASDF system source dir.
+
+Returns: `entries` array plus human-readable `content`.
+
+### `code-find`
+Return definition location (path, line) for a symbol using SBCL `sb-introspect`.
+
+Input:
+- `symbol` (string, required): prefer package-qualified, e.g., `"lisp-mcp-server:version"`
+- `package` (string, optional): used when `symbol` is unqualified; must exist
+
+Output:
+- `path` (relative when inside project, absolute otherwise)
+- `line` (integer or null if unknown)
+
+### `code-describe`
+Return symbol metadata (name, type, arglist, documentation).
+
+Input:
+- `symbol` (string, required)
+- `package` (string, optional): must exist when `symbol` is unqualified
+
+Output:
+- `type` ("function" | "macro" | "variable" | "unbound")
+- `arglist` (string)
+- `documentation` (string|null)
+
 ## Logging
 - Structured JSON line logs to `*error-output*`.
 - Control level via env var `MCP_LOG_LEVEL` with one of: `debug`, `info`, `warn`, `error`.
@@ -123,6 +175,9 @@ allows writing there or configure SBCL’s cache directory accordingly.
 - Reader and runtime evaluation are both enabled. Treat this as a trusted,
   local-development tool; untrusted input can execute arbitrary code in the
   host Lisp image.
+- File access:
+  - Reads: project root, or `asdf:system-source-directory` of registered systems.
+  - Writes: project root only; absolute paths are rejected.
 - If exposure beyond trusted usage is planned, add allowlists, resource/time
   limits, and output caps.
 
@@ -138,8 +193,8 @@ allows writing there or configure SBCL’s cache directory accordingly.
 
 ## Roadmap
 - Error taxonomy as condition types mapped to JSON‑RPC errors
-- Additional tools (read‑only file access, symbol lookup, etc.)
 - CI (GitHub Actions) matrix for SBCL/macOS/Linux
+- Bounds/quotas for tool outputs (content length caps)
 
 ## License
 MIT
