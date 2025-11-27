@@ -74,6 +74,10 @@ Input schema (JSON):
 - `package` (string, optional): package to evaluate in (default `CL-USER`)
 - `printLevel` (integer|null): binds `*print-level*`
 - `printLength` (integer|null): binds `*print-length*`
+Output fields:
+- `content`: last value as text (existing)
+- `stdout`: concatenated standard output from evaluation
+- `stderr`: concatenated standard error from evaluation
 
 Example JSON‑RPC request:
 

@@ -23,7 +23,7 @@
 (declaim (ftype (function (string &key (:package (or package symbol string))
                                   (:print-level (or null (integer 0)))
                                   (:print-length (or null (integer 0))))
-                          (values string t &optional))
+                          (values string t string string &optional))
                 repl-eval))
 (defun repl-eval (input &key (package *default-eval-package*)
                              (print-level nil) (print-length nil))
@@ -31,14 +31,22 @@
 
 Forms are read as provided and evaluated sequentially; the last value is
 returned as a printed string per `prin1-to-string`. The second return value is
-the raw last value for callers that want it."
-  (let ((last-value nil))
+the raw last value for callers that want it. The third and fourth values capture
+stdout and stderr produced during evaluation."
+  (let ((last-value nil)
+        (stdout (make-string-output-stream))
+        (stderr (make-string-output-stream)))
     (handler-bind ((error (lambda (e)
                             (setf last-value
                                   (with-output-to-string (out)
                                     (format out "~A~%" e)
                                     (uiop:print-backtrace :stream out :condition e)))
-                            (return-from repl-eval (values last-value last-value)))))
+                            (return-from repl-eval
+                              (values last-value
+                                      last-value
+                                      (get-output-stream-string stdout)
+                                      (progn (write-string "" stderr)
+                                             (get-output-stream-string stderr)))))))
       ;; Resolve package (may signal error)
       (let* ((pkg (etypecase package
                     (package package)
@@ -52,9 +60,14 @@ the raw last value for callers that want it."
           ;; Read forms (may signal error)
           (let ((forms (%read-all input)))
             ;; Evaluate forms (may signal error)
-            (dolist (form forms)
-              (setf last-value (eval form))))))
+            (let ((*standard-output* stdout)
+                  (*error-output* stderr))
+              (dolist (form forms)
+                (setf last-value (eval form)))))))
       ;; Normal completion: format result
       (let ((*print-level* print-level)
             (*print-length* print-length))
-        (values (prin1-to-string last-value) last-value)))))
+        (values (prin1-to-string last-value)
+                last-value
+                (get-output-stream-string stdout)
+                (get-output-stream-string stderr))))))

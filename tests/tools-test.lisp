@@ -113,7 +113,23 @@
         (ok (eql (gethash "id" obj) 2))
         (ok (arrayp content))
         (ok (string= (gethash "type" first) "text"))
-        (ok (string= (gethash "text" first) "3"))))))
+        (ok (string= (gethash "text" first) "3"))
+        ;; stdout/stderr should be present (even if empty strings)
+        (ok (gethash "stdout" result))
+        (ok (gethash "stderr" result))))))
+
+(deftest tools-call-repl-eval-captures-output
+  (testing "repl-eval captures stdout and stderr"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":12,\"method\":\"tools/call\",\"params\":{\"name\":\"repl-eval\",\"arguments\":{\"code\":\"(progn (format t \\\"hi\\\") (format *error-output* \\\"oops\\\") 42)\"}}}"))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
+             (result (gethash "result" obj)))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok (string= (gethash "stdout" result) "hi"))
+        (ok (string= (gethash "stderr" result) "oops"))
+        (let* ((content (gethash "content" result))
+               (first (aref content 0)))
+          (ok (string= (gethash "text" first) "42")))))))
 
 (deftest tools-call-namespaced-name
   (testing "namespaced tool name like lisp_mcp.repl-eval is accepted"

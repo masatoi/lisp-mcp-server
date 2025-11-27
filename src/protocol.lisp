@@ -85,7 +85,7 @@
    "description"
    "Evaluate Common Lisp forms and return the last value as printed text.
 Provide an existing package (e.g., CL-USER) and set printLevel/printLength
-when you need to control truncation."
+when you need to control truncation. Captures stdout/stderr in the response."
    "inputSchema"
    (%make-ht
     "type" "object"
@@ -234,16 +234,20 @@ Returns a downcased local tool name (string)."
                   (pkg  (and args (gethash "package" args)))
                   (pl   (and args (gethash "printLevel" args)))
                   (plen (and args (gethash "printLength" args))))
-             (multiple-value-bind (printed _)
+             (multiple-value-bind (printed _ stdout stderr)
                  (repl-eval (or code "")
                             :package (or pkg *package*)
                             :print-level pl
                             :print-length plen)
                (declare (ignore _))
-               (%result id (%make-ht "content" (%text-content printed)))))
+               (%result id (%make-ht
+                            "content" (%text-content printed)
+                            "stdout" stdout
+                            "stderr" stderr))))
          (error (e)
            (%error id -32603
                    (format nil "Internal error during REPL evaluation: ~A" e)))))
+
       ((member local '("fs-read-file" "fs_read_file" "read_file" "read") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
@@ -252,7 +256,7 @@ Returns a downcased local tool name (string)."
              (unless (stringp path)
                (return-from handle-tools-call
                  (%error id -32602 "path must be a string")))
-             (let* ((content-string (fs-read-file path :offset offset :limit limit)))
+             (let ((content-string (fs-read-file path :offset offset :limit limit)))
                (%result id (%make-ht
                             "content" (%text-content content-string)
                             "text" content-string
@@ -261,6 +265,7 @@ Returns a downcased local tool name (string)."
                             "limit" limit))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs-read-file: ~A" e)))))
+
       ((member local '("fs-write-file" "fs_write_file" "write_file" "write") :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args)))
@@ -277,8 +282,9 @@ Returns a downcased local tool name (string)."
                           "bytes" (length content))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs_write_file: ~A" e)))))
-      ((member local '("fs-list-directory" "fs_list_directory" "list_directory"
-                       "list" "ls") :test #'string=)
+
+      ((member local '("fs-list-directory" "fs_list_directory" "list_directory" "list" "ls")
+               :test #'string=)
        (handler-case
            (let* ((path (and args (gethash "path" args))))
              (unless (stringp path)
@@ -302,6 +308,7 @@ Returns a downcased local tool name (string)."
                             "path" path))))
          (error (e)
            (%error id -32603 (format nil "Internal error during fs-list-directory: ~A" e)))))
+
       ((member local '("code-find" "code_find" "find" "find_definition") :test #'string=)
        (handler-case
            (let* ((symbol (and args (gethash "symbol" args)))
@@ -322,7 +329,9 @@ Returns a downcased local tool name (string)."
          (error (e)
            (%error id -32603
                    (format nil "Internal error during code-find: ~A" e)))))
-      ((member local '("code-describe" "code_describe" "describe" "describe_symbol") :test #'string=)
+
+      ((member local '("code-describe" "code_describe" "describe" "describe_symbol")
+               :test #'string=)
        (handler-case
            (let* ((symbol (and args (gethash "symbol" args)))
                   (pkg (and args (gethash "package" args))))
@@ -342,8 +351,10 @@ Returns a downcased local tool name (string)."
          (error (e)
            (%error id -32603
                    (format nil "Internal error during code-describe: ~A" e)))))
+
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
+
 
 (defun handle-request (state id method params)
   (cond
