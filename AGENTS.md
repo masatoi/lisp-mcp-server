@@ -8,6 +8,12 @@ The core system lives under `src/`, grouped by responsibility (`log`, `repl`, `p
 ## Build, Test, and Development Commands
 Use `rove lisp-mcp-server.asd` to run the test on the command line.
 
+### Running Individual Tests
+- From the MCP REPL, wrap the test invocation so stdout is captured:  
+  `(with-output-to-string (*standard-output*) (rove:run-test 'lisp-mcp-server/tests/integration-test::repl-eval-printlength))`
+- The wrapper lets you see per-assertion output even when the REPL only returns the final value. Replace the test symbol to target other cases.
+- In sandboxed environments where TCP bind is denied, expect `tests/tcp-test.lisp` to fail; run other suites individually to iterate.
+
 ## Coding Style & Naming Conventions
 Follow the Google Common Lisp Style Guide: 2-space indent, ≤100 columns, blank line between top-level forms. Each `*.lisp` begins with `(in-package ...)` then module-specific `declaim`. Use lower-case lisp-case for functions, `-p` predicates, `+constants+`, and `*specials*`. Avoid runtime `eval` and dynamic symbol interning; prefer restarts over `signal`. Public functions and classes require docstrings; document conditions and restarts in situ.
 

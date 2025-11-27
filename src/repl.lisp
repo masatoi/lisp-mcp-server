@@ -65,8 +65,10 @@ stdout and stderr produced during evaluation."
               (dolist (form forms)
                 (setf last-value (eval form)))))))
       ;; Normal completion: format result
+      ;; Disable *print-readably* here so print-level/print-length can truncate output.
       (let ((*print-level* print-level)
-            (*print-length* print-length))
+            (*print-length* print-length)
+            (*print-readably* nil))
         (values (prin1-to-string last-value)
                 last-value
                 (get-output-stream-string stdout)

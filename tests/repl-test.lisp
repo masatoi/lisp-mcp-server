@@ -27,3 +27,30 @@
         (repl-eval "#.(+ 1 2)")
       (ok (string= printed "3"))
       (ok (= value 3)))))
+
+(deftest repl-eval-print-length
+  (testing "respects print-length when printing result"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(list 1 2 3 4)" :print-length 2)
+      (ok (equal value '(1 2 3 4)))
+      (ok (search "..." printed))
+      (ok (string= stdout ""))
+      (ok (string= stderr "")))))
+
+(deftest repl-eval-captures-stdout-stderr
+  (testing "captures stdout and stderr separately"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(progn (format t \"hi\") (format *error-output* \"oops\") 99)")
+      (ok (string= printed "99"))
+      (ok (= value 99))
+      (ok (string= stdout "hi"))
+      (ok (string= stderr "oops")))))
+
+(deftest repl-eval-invalid-package
+  (testing "returns error string when package is missing"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(+ 1 1)" :package "NO-SUCH-PACKAGE")
+      (ok (search "does not exist" printed))
+      (ok (string= printed value))
+      (ok (string= stdout ""))
+      (ok (string= stderr "")))))
