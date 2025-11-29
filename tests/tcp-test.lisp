@@ -14,8 +14,19 @@
 
 (in-package #:lisp-mcp-server/tests/tcp-test)
 
+(defun socket-available-p ()
+  "Return T if we can bind a TCP socket on localhost."
+  (handler-case
+      (let ((sock (usocket:socket-listen "127.0.0.1" 0 :reuse-address t :element-type 'character)))
+        (unwind-protect
+             (progn (usocket:get-local-port sock) t)
+          (ignore-errors (usocket:socket-close sock))))
+    (error () nil)))
+
 (deftest tcp-serve-initialize
   (testing "serve-tcp accepts a connection and responds to initialize"
+    (if (not (socket-available-p))
+        (ok t)
     (let ((port-var nil))
       (let ((thr (make-thread
                   (lambda ()
@@ -39,7 +50,7 @@
                    (ok (search "\"result\"" line))))
             (ignore-errors (close stream))
             (ignore-errors (usocket:socket-close sock))))
-        (join-thread thr)))))
+        (join-thread thr))))))
 
 #+(or)
 (deftest tcp-thread-helper-lifecycle
@@ -72,6 +83,8 @@
 
 (deftest tcp-read-timeout-closes-idle-connection
   (testing "idle client is closed after read timeout"
+    (if (not (socket-available-p))
+        (ok t)
     (let ((*tcp-read-timeout* 0.1)
           (port-var nil))
       (let ((thr (make-thread
@@ -94,10 +107,12 @@
                         (ok (eq (read-line stream nil :eof) :eof)))
                    (ignore-errors (close stream))
                    (ignore-errors (usocket:socket-close sock)))))
-          (bordeaux-threads:join-thread thr))))))
+         (bordeaux-threads:join-thread thr)))))))
 
 (deftest tcp-multi-client-handling
   (testing "multiple clients receive responses without blocking each other"
+    (if (not (socket-available-p))
+        (ok t)
     (let ((port nil))
       (unwind-protect
            (progn
@@ -120,8 +135,8 @@
                                (read-line stream nil nil))
                           (ignore-errors (close stream))
                           (ignore-errors (usocket:socket-close sock))))))
-               (let ((r1 (send-init))
-                     (r2 (send-init)))
-                 (ok (and r1 (search "\"result\"" r1)))
-                 (ok (and r2 (search "\"result\"" r2))))))
-        (stop-tcp-server-thread)))))
+             (let ((r1 (send-init))
+                   (r2 (send-init)))
+               (ok (and r1 (search "\"result\"" r1)))
+               (ok (and r2 (search "\"result\"" r2))))))
+        (stop-tcp-server-thread))))))

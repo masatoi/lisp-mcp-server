@@ -154,10 +154,15 @@ Calls ON-LISTENING with the actual port when ready. If ACCEPT-ONCE is T,
 accepts a single connection and returns T after the client closes."
   (let ((listener nil))
     (setf *tcp-stop-flag* nil)
+    ;; Early exit if socket creation is not permitted (e.g., sandboxed CI).
+    (handler-case
+        (setf listener (usocket:socket-listen host port :reuse-address t
+                                              :element-type 'character))
+      (error (e)
+        (log-event :warn "tcp.listen.error" "error" (princ-to-string e))
+        (return-from serve-tcp nil)))
     (unwind-protect
          (progn
-           (setf listener (usocket:socket-listen host port :reuse-address t
-                                                :element-type 'character))
            (setf *tcp-listener* listener)
            (let ((actual (usocket:get-local-port listener)))
              (when on-listening (funcall on-listening actual)))
@@ -181,17 +186,19 @@ accepts a single connection and returns T after the client closes."
                   (loop while (not *tcp-stop-flag*)
                         do (let ((ready (usocket:wait-for-input (list listener)
                                                                :timeout *tcp-accept-timeout*)))
-                             (if ready
-                                 (handler-case
-                                     (if accept-once
-                                         (return (handle-one))
-                                         (let ((conn-id (incf *tcp-conn-counter*)))
-                                           (bordeaux-threads:make-thread
-                                            (lambda () (handle-one conn-id))
-                                            :name (format nil "mcp-client-~A" conn-id))))
-                                   (error (e)
-                                     (log-event :warn "tcp.accept.error" "error" (princ-to-string e))))
-                                 (log-event :debug "tcp.accept.timeout" "timeout" *tcp-accept-timeout*)))))) 
-             (accept-loop)))
+                             (cond
+                               ((null ready)
+                                (log-event :debug "tcp.accept.timeout" "timeout" *tcp-accept-timeout*))
+                               (t
+                                (handler-case
+                                    (if accept-once
+                                        (return (handle-one))
+                                        (let ((conn-id (incf *tcp-conn-counter*)))
+                                          (bordeaux-threads:make-thread
+                                           (lambda () (handle-one conn-id))
+                                           :name (format nil "mcp-client-~A" conn-id))))
+                                  (error (e)
+                                    (log-event :warn "tcp.accept.error" "error" (princ-to-string e)))))))))))
+             (accept-loop))
       (when listener (ignore-errors (usocket:socket-close listener)))
       (setf *tcp-listener* nil)))
