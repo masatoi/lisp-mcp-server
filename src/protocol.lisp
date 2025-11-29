@@ -61,17 +61,23 @@
 (defun handle-initialize (state id params)
   (declare (ignore state))
   (let* ((client-ver (and params (gethash "protocolVersion" params)))
-         (chosen (if (and client-ver (find client-ver +supported-protocol-versions+
-                                           :test #'string=))
-                     client-ver
-                     (first +supported-protocol-versions+)))
+         (supported (and client-ver (find client-ver +supported-protocol-versions+
+                                          :test #'string=)))
+         (chosen (cond
+                   (supported supported)
+                   ((null client-ver) (first +supported-protocol-versions+))
+                   (t nil)))
          (caps (%make-ht
                 "tools" (%make-ht "listChanged" t))))
-    (%result id
-             (%make-ht
-              "protocolVersion" chosen
-              "serverInfo" (%make-ht "name" "lisp-mcp-server" "version" (version))
-              "capabilities" caps))))
+    (if (null chosen)
+        (%error id -32602
+                (format nil "Unsupported protocolVersion ~A" client-ver)
+                (%make-ht "supportedVersions" +supported-protocol-versions+))
+        (%result id
+                 (%make-ht
+                  "protocolVersion" chosen
+                  "serverInfo" (%make-ht "name" "lisp-mcp-server" "version" (version))
+                  "capabilities" caps)))))
 
 (defun handle-notification (state method params)
   (declare (ignore state params))
@@ -108,6 +114,18 @@ there"))
             (%make-ht "type" "integer"
                       "description"
                       "Integer to limit printed list length (omit to print fully)"))
+      (setf (gethash "timeoutSeconds" p)
+            (%make-ht "type" "number"
+                      "description"
+                      "Seconds to wait before timing out evaluation"))
+      (setf (gethash "maxOutputLength" p)
+            (%make-ht "type" "integer"
+                      "description"
+                      "Maximum characters for printed result/stdout/stderr"))
+      (setf (gethash "safeRead" p)
+            (%make-ht "type" "boolean"
+                      "description"
+                      "When true, disables #. reader evaluation for safety"))
       p))))
 
 (defun tools-descriptor-fs-read ()
@@ -233,12 +251,18 @@ Returns a downcased local tool name (string)."
            (let* ((code (and args (gethash "code" args)))
                   (pkg  (and args (gethash "package" args)))
                   (pl   (and args (gethash "printLevel" args)))
-                  (plen (and args (gethash "printLength" args))))
+                  (plen (and args (gethash "printLength" args)))
+                  (timeout (and args (gethash "timeoutSeconds" args)))
+                  (max-out (and args (gethash "maxOutputLength" args)))
+                  (safe-read (and args (gethash "safeRead" args))))
              (multiple-value-bind (printed _ stdout stderr)
                  (repl-eval (or code "")
                             :package (or pkg *package*)
                             :print-level pl
-                            :print-length plen)
+                            :print-length plen
+                            :timeout-seconds timeout
+                            :max-output-length max-out
+                            :safe-read safe-read)
                (declare (ignore _))
                (%result id (%make-ht
                             "content" (%text-content printed)
@@ -370,26 +394,39 @@ Returns a downcased local tool name (string)."
     (when (string= trimmed "")
       (log-event :debug "rpc.skip-empty")
       (return-from process-json-line nil))
-    (let* ((msg (%decode-json trimmed))
-         (jsonrpc (gethash "jsonrpc" msg))
-         (id (gethash "id" msg))
-         (method (gethash "method" msg))
-         (params (gethash "params" msg)))
-      (log-event :debug "rpc.dispatch" "id" id "method" method)
-      (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
-        (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
-          (log-event :warn "rpc.invalid" "reason" "bad jsonrpc version")
-          (return-from process-json-line resp)))
-      (if method
-          (if id
-              (let ((r (handle-request state id method params)))
-                (log-event :debug "rpc.result" "id" id "method" method)
-                (%encode-json r))
-              ;; notification
-              (progn
-                (handle-notification state method params)
-                (log-event :debug "rpc.notify" "method" method)
-                nil))
+    (let* ((msg (handler-case
+                    (%decode-json trimmed)
+                  (error (e)
+                    (log-event :warn "rpc.parse-error" "line" trimmed "error" (princ-to-string e))
+                    (return-from process-json-line
+                      (%encode-json (%error nil -32700 "Parse error")))))))
+      (unless (hash-table-p msg)
+        (log-event :warn "rpc.invalid" "reason" "message not object")
+        (return-from process-json-line
+          (%encode-json (%error nil -32600 "Invalid Request"))))
+      (let* ((jsonrpc (gethash "jsonrpc" msg))
+             (id (gethash "id" msg))
+             (method (gethash "method" msg))
+             (params (gethash "params" msg)))
+        (log-event :debug "rpc.dispatch" "id" id "method" method)
+        (unless (and (stringp jsonrpc) (string= jsonrpc "2.0"))
           (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
-            (log-event :warn "rpc.invalid" "reason" "missing method")
-            resp)))))
+            (log-event :warn "rpc.invalid" "reason" "bad jsonrpc version")
+            (return-from process-json-line resp)))
+        (handler-case
+            (if method
+                (if id
+                    (let ((r (handle-request state id method params)))
+                      (log-event :debug "rpc.result" "id" id "method" method)
+                      (%encode-json r))
+                    ;; notification
+                    (progn
+                      (handle-notification state method params)
+                      (log-event :debug "rpc.notify" "method" method)
+                      nil))
+                (let ((resp (%encode-json (%error id -32600 "Invalid Request"))))
+                  (log-event :warn "rpc.invalid" "reason" "missing method")
+                  resp))
+          (error (e)
+            (log-event :error "rpc.internal" "id" id "method" method "error" (princ-to-string e))
+            (%encode-json (%error id -32603 "Internal error"))))))))

@@ -38,6 +38,15 @@
            (result (gethash "result" obj)))
       (ok (string= (gethash "protocolVersion" result) "2024-11-05")))))
 
+(deftest initialize-unsupported-version
+  (testing "initialize returns error for unsupported protocolVersion"
+    (let* ((line "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"1999-01-01\"}}")
+           (resp (process-json-line line))
+           (obj (parse resp))
+           (err (gethash "error" obj)))
+      (ok (= (gethash "code" err) -32602))
+      (ok (gethash "data" err)))))
+
 (deftest ping-returns-empty
   (testing "ping returns empty result object"
     (let* ((resp (process-json-line "{\"jsonrpc\":\"2.0\",\"id\":42,\"method\":\"ping\"}"))
@@ -50,3 +59,17 @@
   (testing "empty or whitespace-only lines are skipped without error"
     (ok (null (process-json-line "")))
     (ok (null (process-json-line "   ")))))
+
+(deftest invalid-json-returns-parse-error
+  (testing "malformed JSON returns -32700 Parse error"
+    (let* ((resp (process-json-line "{bad json"))
+           (obj (parse resp))
+           (err (gethash "error" obj)))
+      (ok (= (gethash "code" err) -32700)))))
+
+(deftest unknown-method-returns-not-found
+  (testing "unknown method returns -32601"
+    (let* ((resp (process-json-line "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"nope\"}"))
+           (obj (parse resp))
+           (err (gethash "error" obj)))
+      (ok (= (gethash "code" err) -32601)))))

@@ -32,6 +32,8 @@ directory; fall back to the current working directory at load time.")
 
 (defparameter *hidden-prefixes* '("." ".git" ".hg" ".svn" ".cache" ".fasl"))
 (defparameter *skip-extensions* '("fasl" "ufasl" "x86f" "cfasl"))
+(defparameter *fs-read-max-bytes* 1048576
+  "Maximum number of characters allowed for fs-read-file when LIMIT is provided.")
 
 (defun %path-inside-p (child parent)
   "Return T when CHILD pathname is a subpath of directory PARENT."
@@ -65,19 +67,26 @@ Allows project-root subpaths and source dirs of registered ASDF systems."
   "Ensure PATH is relative to project root and return absolute pathname.
 Signals an error if outside project root or absolute."
   (let* ((pn (uiop:ensure-pathname path :want-relative t))
-         (abs (%canonical-path pn :relative-to *project-root*)))
-    (unless (%path-inside-p abs (uiop:ensure-directory-pathname *project-root*))
+         (abs (%canonical-path pn :relative-to *project-root*))
+         (real (or (ignore-errors (truename abs)) abs)))
+    (unless (%path-inside-p real (uiop:ensure-directory-pathname *project-root*))
       (error "Write path ~A is outside project root" path))
-    abs))
+    real))
 
 (defun %read-file-string (pn offset limit)
   "Read file PN honoring OFFSET and LIMIT (both may be NIL)."
-  (let* ((content (uiop:read-file-string pn))
-         (start (max 0 (or offset 0)))
-         (end (if (and limit (>= limit 0))
-                  (min (length content) (+ start limit))
-                  (length content))))
-    (subseq content start end)))
+  (when (and offset (< offset 0))
+    (error "offset must be non-negative"))
+  (when (and limit (< limit 0))
+    (error "limit must be non-negative"))
+  (when (and limit (> limit *fs-read-max-bytes*))
+    (error "limit ~D exceeds maximum ~D" limit *fs-read-max-bytes*))
+  (with-open-file (in pn :direction :input :element-type 'character)
+    (when offset (file-position in offset))
+    (let* ((len (or limit (ignore-errors (file-length in)) *fs-read-max-bytes*))
+           (buf (make-string len))
+           (count (read-sequence buf in :end len)))
+      (subseq buf 0 count))))
 
 (defun fs-read-file (path &key offset limit)
   "Read text file PATH with optional OFFSET and LIMIT.

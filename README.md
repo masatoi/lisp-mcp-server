@@ -23,7 +23,8 @@ clients to drive Common Lisp development via MCP.
 ## Protocol Support
 - Protocol versions recognized: `2025-06-18`, `2025-03-26`, `2024-11-05`
   - On `initialize`, if the client’s `protocolVersion` is supported it is echoed
-    back; otherwise the server’s preferred version is selected.
+    back; if it is **not** supported the server returns `error.code = -32602`
+    with `data.supportedVersions`.
 
 ## Requirements
 - SBCL 2.x (developed with SBCL 2.5.x)
@@ -157,6 +158,16 @@ MCP_LOG_LEVEL=debug sbcl --eval '(ql:quickload :lisp-mcp-server)' ...
 ros install fukamachi/rove
 rove lisp-mcp-server.asd
 ```
+
+CI / sandbox note:
+- Socket-restricted environments may fail `tests/tcp-test.lisp`. Run core suites without TCP via:
+  ```sh
+  rove tests/core-test.lisp tests/protocol-test.lisp tests/tools-test.lisp tests/repl-test.lisp tests/fs-test.lisp tests/code-test.lisp tests/logging-test.lisp
+  ```
+- Run TCP-specific tests only where binding to localhost is permitted:
+  ```sh
+  rove tests/tcp-test.lisp
+  ```
 
 What’s covered:
 - Version/API surface sanity

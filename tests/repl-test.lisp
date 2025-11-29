@@ -54,3 +54,31 @@
       (ok (string= printed value))
       (ok (string= stdout ""))
       (ok (string= stderr "")))))
+
+(deftest repl-eval-timeout
+  (testing "timeouts return a descriptive string without hanging"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(loop)" :timeout-seconds 0.1)
+      (ok (search "timed out" printed))
+      (ok (eql value :timeout))
+      (ok (string= stdout ""))
+      (ok (string= stderr "")))))
+
+(deftest repl-eval-safe-read-disables-reader-eval
+  (testing "safe-read prevents #. reader evaluation"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "#.(+ 1 2)" :safe-read t)
+      (ok (or (search "#." printed) (search "read-eval" printed) (search "reader" printed)))
+      (ok (string= printed value))
+      (ok (string= stdout ""))
+      (ok (string= stderr "")))))
+
+(deftest repl-eval-max-output-length
+  (testing "max-output-length truncates printed result"
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(make-string 20 :initial-element #\\a)" :max-output-length 5)
+      (declare (ignore value))
+      (ok (search "...(truncated)" printed))
+      (ok (<= (length printed) (+ 5 (length "...(truncated)"))))
+      (ok (string= stdout ""))
+      (ok (string= stderr "")))))

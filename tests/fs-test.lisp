@@ -32,3 +32,24 @@
            (names (map 'list (lambda (h) (gethash "name" h)) entries)))
       (ok (find "src" names :test #'string=))
       (ok (not (find ".git" names :test #'string=))))))
+
+(deftest fs-read-file-respects-limit-and-offset
+  (testing "limit and offset trim content"
+    (let ((txt (fs-read-file "src/core.lisp" :offset 1 :limit 5)))
+      (ok (= (length txt) 5)))))
+
+(deftest fs-read-file-rejects-negative-offset
+  (testing "negative offset signals error"
+    (ok (handler-case (progn (fs-read-file "src/core.lisp" :offset -1) nil)
+          (error () t)))))
+
+(deftest fs-read-file-rejects-huge-limit
+  (testing "limit over max signals error"
+    (let ((max lisp-mcp-server/src/fs::*fs-read-max-bytes*))
+      (ok (handler-case (progn (fs-read-file "src/core.lisp" :limit (1+ max)) nil)
+            (error () t))))))
+
+(deftest fs-write-file-prevents-traversal
+  (testing "writing outside project root is rejected"
+    (ok (handler-case (progn (fs-write-file "../outside.txt" "nope") nil)
+          (error () t)))))
