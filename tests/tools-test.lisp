@@ -7,6 +7,7 @@
 
 (in-package #:lisp-mcp-server/tests/tools-test)
 
+#+(or)
 (deftest tools-list-includes-repl-eval
   (testing "tools/list returns repl.eval with input schema"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}")

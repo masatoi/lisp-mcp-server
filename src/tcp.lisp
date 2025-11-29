@@ -80,14 +80,17 @@ Returns the thread object and the bound PORT once the listener is up."
           do (sleep 0.01))
     (values *tcp-server-thread* *tcp-server-port*)))
 
-(declaim (ftype (function (&key (:host string) (:port (or integer null))
-                                   (:accept-once t) (:on-listening (or null function)))
-                          (values (member :already-running :started) &optional))
+(declaim (ftype (function (&key (:host string)
+                                (:port (or integer null))
+                                (:accept-once t)
+                                (:on-listening (or null function)))
+                          (values (member :already-running :started nil) &optional))
                 ensure-tcp-server-thread))
 (defun ensure-tcp-server-thread (&key (host "127.0.0.1") (port 0)
                                       (accept-once nil) on-listening)
   "Ensure a background TCP server thread is running.
-Starts one if needed and returns :started; otherwise returns :already-running."
+Returns :already-running when one is alive, :started when a new one was
+successfully started, or NIL if the start attempt failed."
   (if (tcp-server-running-p)
       (progn
         (when (and on-listening *tcp-server-port*)
@@ -111,7 +114,7 @@ Starts one if needed and returns :started; otherwise returns :already-running."
     (when *tcp-listener*
       (ignore-errors (usocket:socket-close *tcp-listener*)))
     (when *tcp-server-thread*
-      (bordeaux-threads:join-thread *tcp-server-thread* 1.0)
+      (bordeaux-threads:join-thread *tcp-server-thread*)
       (when (bordeaux-threads:thread-alive-p *tcp-server-thread*)
         ;; Fall back to destroy-thread if it refused to stop.
         (bordeaux-threads:destroy-thread *tcp-server-thread*)))
@@ -173,11 +176,26 @@ accepts a single connection and returns T after the client closes."
                         (conn-id (or conn-id (incf *tcp-conn-counter*))))
                     (unwind-protect
                          (progn
-                           (setf client (usocket:socket-accept listener :element-type 'character))
-                           (let ((remote (ignore-errors (usocket:get-peer-address client))))
-                             (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
-                             (setf stream (usocket:socket-stream client))
-                             (%process-stream stream client conn-id remote))
+                           (setf client
+                                 (handler-case
+                                     (usocket:socket-accept listener :element-type 'character)
+                                   ;; If the socket has already been closed, return nil and exit silently
+                                   (usocket:bad-file-descriptor-error ()
+                                     nil)
+                                   ;; SBCL-specific errors are also caught just in case
+                                   #+sbcl
+                                   (sb-bsd-sockets:bad-file-descriptor-error ()
+                                     nil)
+                                   ;; Log other unexpected errors and return nil
+                                   (error (e)
+                                     (log-event :warn "tcp.accept.fail" "error" (princ-to-string e))
+                                     nil)))
+                           ;; Proceed only if client is successfully obtained
+                           (when client
+                             (let ((remote (ignore-errors (usocket:get-peer-address client))))
+                               (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
+                               (setf stream (usocket:socket-stream client))
+                               (%process-stream stream client conn-id remote)))
                            t)
                       (when stream (ignore-errors (close stream)))
                       (when client (ignore-errors (usocket:socket-close client)))
