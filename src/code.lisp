@@ -18,6 +18,8 @@
 Signals an error when the package does not exist."
   (cond
     ((null package) *package*)
+    ((and (stringp package) (string= package ""))
+     *package*)
     ((packagep package) package)
     ((symbolp package)
      (or (find-package package)
@@ -29,10 +31,16 @@ Signals an error when the package does not exist."
 
 (defun %parse-symbol (symbol-name &key package)
   "Read SYMBOL-NAME as a symbol without permitting evaluation.
-PACKAGE specifies the current package used when SYMBOL-NAME is unqualified."
+PACKAGE is used only when SYMBOL-NAME is unqualified; when a package marker
+appears in SYMBOL-NAME (e.g., \"pkg:sym\"), PACKAGE is ignored."
   (unless (stringp symbol-name)
     (error "symbol must be a string"))
-  (let* ((*package* (%ensure-package package))
+  (let* ((qualified-p (position #\: symbol-name))
+         (*package* (if qualified-p
+                        *package*
+                        (handler-case
+                            (%ensure-package package)
+                          (error () *package*))))
          (*readtable* (copy-readtable nil))
          (*read-eval* nil))
     (multiple-value-bind (obj end) (read-from-string symbol-name nil :eof)
@@ -87,7 +95,9 @@ Returns NIL when the file cannot be read."
 (defun code-find-definition (symbol-name &key package)
   "Return the definition location for SYMBOL-NAME.
 Values are PATH (string) and LINE (integer), or NILs when not found."
-  (let ((sym (%parse-symbol symbol-name :package package)))
+  (let* ((qualified (position #\: symbol-name))
+         (pkg (if qualified nil package))
+         (sym (%parse-symbol symbol-name :package pkg)))
     #+sbcl
     (let* ((pkg (%ensure-sb-introspect))
            (find-by-name (and pkg (find-symbol "FIND-DEFINITION-SOURCES-BY-NAME" pkg)))
