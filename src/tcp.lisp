@@ -49,11 +49,11 @@
        (bordeaux-threads:thread-alive-p *tcp-server-thread*)))
 
 (declaim (ftype (function (&key (:host string) (:port (or integer null))
-                                   (:accept-once t) (:on-listening (or null function)))
+                                (:accept-once t) (:on-listening (or null function)))
                           (values t (or integer null) &optional))
                 start-tcp-server-thread))
 (defun start-tcp-server-thread (&key (host "127.0.0.1") (port 0)
-                                     (accept-once nil) on-listening)
+                                     (accept-once t) on-listening)
   "Start the TCP MCP server on a dedicated thread.
 Returns the thread object and the bound PORT once the listener is up."
   (when (and *tcp-server-thread*
@@ -173,32 +173,18 @@ accepts a single connection and returns T after the client closes."
            (let ((actual (usocket:get-local-port listener)))
              (when on-listening (funcall on-listening actual)))
            (labels
-               ((handle-one (&optional conn-id)
-                  (let ((client nil)
+               ((handle-one (&optional conn-id client-arg)
+                  (let ((client client-arg)
                         (stream nil)
                         (conn-id (or conn-id (incf *tcp-conn-counter*))))
                     (unwind-protect
                          (progn
-                           (setf client
-                                 (handler-case
-                                     (usocket:socket-accept listener :element-type 'character)
-                                   ;; If the socket has already been closed, return nil and exit silently
-                                   (usocket:bad-file-descriptor-error ()
-                                     nil)
-                                   ;; SBCL-specific errors are also caught just in case
-                                   #+sbcl
-                                   (sb-bsd-sockets:bad-file-descriptor-error ()
-                                     nil)
-                                   ;; Log other unexpected errors and return nil
-                                   (error (e)
-                                     (log-event :warn "tcp.accept.fail" "error" (princ-to-string e))
-                                     nil)))
                            ;; Proceed only if client is successfully obtained
                            (when client
-                           (let ((remote (ignore-errors (usocket:get-peer-address client))))
-                             (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
-                             (setf stream (usocket:socket-stream client))
-                             (%process-stream stream client conn-id remote)))
+                             (let ((remote (ignore-errors (usocket:get-peer-address client))))
+                               (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
+                               (setf stream (usocket:socket-stream client))
+                               (%process-stream stream client conn-id remote)))
                            t)
                       (when stream (ignore-errors (close stream)))
                       (when client (ignore-errors (usocket:socket-close client)))
@@ -211,13 +197,26 @@ accepts a single connection and returns T after the client closes."
                                ((null ready)
                                 (log-event :debug "tcp.accept.timeout" "timeout" *tcp-accept-timeout*))
                                (accept-once
-                                (return (handle-one)))
+                                (let ((client (handler-case
+                                                   (usocket:socket-accept listener :element-type 'character)
+                                                 (error (e)
+                                                   (log-event :warn "tcp.accept.fail" "error" (princ-to-string e))
+                                                   nil))))
+                                  (when client
+                                    (handle-one 0 client))
+                                  (return)))
                                (t
                                 (handler-case
-                                    (let ((conn-id (incf *tcp-conn-counter*)))
-                                      (bordeaux-threads:make-thread
-                                       (lambda () (handle-one conn-id))
-                                       :name (format nil "mcp-client-~A" conn-id)))
+                                    (let ((conn-id (incf *tcp-conn-counter*))
+                                          (client (handler-case
+                                                       (usocket:socket-accept listener :element-type 'character)
+                                                     (error (e)
+                                                       (log-event :warn "tcp.accept.fail" "error" (princ-to-string e))
+                                                       nil))))
+                                      (when client
+                                        (bordeaux-threads:make-thread
+                                         (lambda () (handle-one conn-id client))
+                                         :name (format nil "mcp-client-~A" conn-id))))
                                   (error (e)
                                     (log-event :warn "tcp.accept.error" "error" (princ-to-string e))))))))))
              (accept-loop)))
