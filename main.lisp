@@ -13,6 +13,8 @@
                 #:fs-write-file
                 #:fs-list-directory
                 #:*project-root*)
+  (:import-from #:lisp-mcp-server/src/lisp-read-file
+                #:lisp-read-file)
   (:import-from #:lisp-mcp-server/src/code
                 #:code-find-definition
                 #:code-describe-symbol)
@@ -38,6 +40,7 @@
            #:fs-read-file
            #:fs-write-file
            #:fs-list-directory
+           #:lisp-read-file
            #:*project-root*
            #:check-parens
            ;; Code intelligence

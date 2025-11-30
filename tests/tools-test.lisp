@@ -7,6 +7,23 @@
 
 (in-package #:lisp-mcp-server/tests/tools-test)
 
+(deftest tools-call-lisp-read-file
+  (testing "tools/call lisp-read-file returns collapsed content"
+    (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"tools/call\",\"params\":{\"name\":\"lisp-read-file\",\"arguments\":{\"path\":\"src/core.lisp\"}}}"))
+      (let* ((resp (process-json-line req))
+             (obj (parse resp))
+             (result (gethash "result" obj))
+             (content (and result (gethash "content" result)))
+             (first (and (arrayp content) (> (length content) 0) (aref content 0))))
+        (ok (string= (gethash "jsonrpc" obj) "2.0"))
+        (ok (string= (gethash "mode" result) "lisp-collapsed"))
+        (ok (arrayp content))
+        (ok (stringp (gethash "text" first)))
+        (ok (search "(defun version" (gethash "text" first)))
+        (let ((meta (gethash "meta" result)))
+          (ok (hash-table-p meta))
+          (ok (>= (gethash "total_forms" meta) 3)))))))
+
 (deftest tools-call-fs-read
   (testing "tools/call fs-read-file returns content"
     (let* ((req "{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"tools/call\",\"params\":{\"name\":\"fs-read-file\",\"arguments\":{\"path\":\"src/core.lisp\",\"limit\":10}}}"))

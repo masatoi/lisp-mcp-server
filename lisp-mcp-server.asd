@@ -7,6 +7,7 @@
   :license "MIT"
   :version "0.2.0"
   :depends-on (:alexandria
+               :cl-ppcre
                :yason
                :usocket
                :bordeaux-threads

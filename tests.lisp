@@ -8,6 +8,7 @@
   (:import-from #:lisp-mcp-server/tests/logging-test)
   (:import-from #:lisp-mcp-server/tests/protocol-test)
   (:import-from #:lisp-mcp-server/tests/repl-test)
+  (:import-from #:lisp-mcp-server/tests/lisp-read-file-test)
   (:import-from #:lisp-mcp-server/tests/validate-test)
   (:import-from #:lisp-mcp-server/tests/tcp-test)
   (:import-from #:lisp-mcp-server/tests/tools-test)

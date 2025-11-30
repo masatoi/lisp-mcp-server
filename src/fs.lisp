@@ -17,6 +17,7 @@
   (:import-from #:asdf #:registered-systems #:system-source-directory)
   (:import-from #:uiop/filesystem #:ensure-directories-exist)
   (:export #:*project-root*
+           #:fs-resolve-read-path
            #:fs-read-file
            #:fs-write-file
            #:fs-list-directory))
@@ -91,6 +92,14 @@ Signals an error if outside project root or absolute."
            (buf (make-string len))
            (count (read-sequence buf in :end len)))
       (subseq buf 0 count))))
+
+(defun fs-resolve-read-path (path)
+  "Return a canonical pathname for PATH when it is readable per policy.
+Signals an error when PATH is outside the allow-list."
+  (let ((pn (%allowed-read-path-p path)))
+    (unless pn
+      (error "Read not permitted for path ~A" path))
+    pn))
 
 (defun fs-read-file (path &key offset limit)
   "Read text file PATH with optional OFFSET and LIMIT.

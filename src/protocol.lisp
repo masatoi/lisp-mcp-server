@@ -7,6 +7,8 @@
   (:import-from #:lisp-mcp-server/src/repl #:repl-eval)
   (:import-from #:lisp-mcp-server/src/fs
                 #:fs-read-file #:fs-write-file #:fs-list-directory)
+  (:import-from #:lisp-mcp-server/src/lisp-read-file
+                #:lisp-read-file)
   (:import-from #:lisp-mcp-server/src/code
                 #:code-find-definition #:code-describe-symbol)
   (:import-from #:lisp-mcp-server/src/validate
@@ -183,6 +185,38 @@ Use absolute paths inside the project or an ASDF system."
 ASDF system"))
                    (%make-ht "type" "object" "properties" p "required" (vector "path")))))
 
+(defun tools-descriptor-lisp-read-file ()
+  (%make-ht
+   "name" "lisp-read-file"
+   "description"
+   "Read a file with Lisp-aware collapsed view, optionally expanding forms matching patterns."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "path" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Path to read; absolute inside project or registered ASDF system, or relative to project root"))
+                   (setf (gethash "collapsed" p)
+                         (%make-ht "type" "boolean"
+                                   "description"
+                                   "When true (default) collapse Lisp definitions to signatures"))
+                   (setf (gethash "name_pattern" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Regex to match definition names to expand (CL-PPCRE syntax)"))
+                   (setf (gethash "content_pattern" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Regex to match form bodies or text lines to expand"))
+                   (setf (gethash "offset" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "0-based line offset when collapsed=false (raw mode only)"))
+                   (setf (gethash "limit" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "Maximum lines to return; defaults to 2000"))
+                   (%make-ht "type" "object" "properties" p "required" (vector "path")))))
+
 (defun tools-descriptor-code-find ()
   (%make-ht
    "name" "code-find"
@@ -254,6 +288,7 @@ and is loaded"))
                         (tools-descriptor-fs-read)
                         (tools-descriptor-fs-write)
                         (tools-descriptor-fs-list)
+                        (tools-descriptor-lisp-read-file)
                         (tools-descriptor-code-find)
                         (tools-descriptor-code-describe)
                         (tools-descriptor-check-parens))))
@@ -300,6 +335,42 @@ Returns a downcased local tool name (string)."
              (cons "Internal error during REPL evaluation" e)
              (%error id -32603
                      (format nil "Internal error during REPL evaluation: ~A" e))))))
+
+      ((member local '("lisp-read-file" "lisp_read_file" "lisp.read_file" "lisp-read")
+               :test #'string=)
+       (handler-case
+           (let* ((path (and args (gethash "path" args)))
+                  (collapsed-present nil)
+                  (collapsed
+                    (multiple-value-bind (val presentp)
+                        (and args (gethash "collapsed" args))
+                      (setf collapsed-present presentp)
+                      (if presentp val t)))
+                  (name-pattern (and args (gethash "name_pattern" args)))
+                  (content-pattern (and args (gethash "content_pattern" args)))
+                  (offset (and args (gethash "offset" args)))
+                  (limit (and args (gethash "limit" args))))
+             (unless (stringp path)
+               (return-from handle-tools-call
+                 (%error id -32602 "path must be a string")))
+             (when (and collapsed-present (not (member collapsed '(t nil))))
+               (return-from handle-tools-call
+                 (%error id -32602 "collapsed must be boolean")))
+             (let ((result (lisp-read-file path
+                                           :collapsed collapsed
+                                           :name-pattern name-pattern
+                                           :content-pattern content-pattern
+                                           :offset offset
+                                           :limit limit)))
+               (%result id (%make-ht
+                            "content" (%text-content (gethash "content" result))
+                            "text" (gethash "content" result)
+                            "path" (gethash "path" result)
+                            "mode" (gethash "mode" result)
+                            "meta" (gethash "meta" result)))))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during lisp-read-file: ~A" e)))))
 
       ((member local '("fs-read-file" "fs_read_file" "read_file" "read") :test #'string=)
        (handler-case
