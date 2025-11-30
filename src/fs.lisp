@@ -2,6 +2,7 @@
 
 (defpackage #:lisp-mcp-server/src/fs
   (:use #:cl)
+  (:import-from #:lisp-mcp-server/src/log #:log-event)
   (:import-from #:uiop
                 #:ensure-directory-pathname
                 #:getcwd
@@ -34,6 +35,9 @@ directory; fall back to the current working directory at load time.")
 (defparameter *skip-extensions* '("fasl" "ufasl" "x86f" "cfasl"))
 (defparameter *fs-read-max-bytes* 1048576
   "Maximum number of characters allowed for fs-read-file when LIMIT is provided.")
+
+(defun %fd-count ()
+  (ignore-errors (length (directory #P"/proc/self/fd/*"))))
 
 (defun %path-inside-p (child parent)
   "Return T when CHILD pathname is a subpath of directory PARENT."
@@ -98,7 +102,10 @@ Returns the content string."
   (let ((pn (%allowed-read-path-p path)))
     (unless pn
       (error "Read not permitted for path ~A" path))
-    (%read-file-string pn offset limit)))
+    (log-event :debug "fs.read.open" "path" (namestring pn) "offset" offset "limit" limit "fd" (%fd-count))
+    (let ((text (%read-file-string pn offset limit)))
+      (log-event :debug "fs.read.close" "path" (namestring pn) "fd" (%fd-count))
+      text)))
 
 (defun %write-string-to-file (pn content)
   (uiop/filesystem::ensure-directories-exist pn)
@@ -112,7 +119,10 @@ Returns the content string."
   "Write CONTENT to PATH relative to project root.
 Returns T on success."
   (let ((pn (%ensure-write-path path)))
-    (%write-string-to-file pn content)))
+    (log-event :debug "fs.write.open" "path" (namestring pn) "bytes" (length content) "fd" (%fd-count))
+    (unwind-protect
+         (%write-string-to-file pn content)
+      (log-event :debug "fs.write.close" "path" (namestring pn) "fd" (%fd-count)))))
 
 (defun %entry-name (path)
   "Return display name for PATH, trimming trailing slash on directories."

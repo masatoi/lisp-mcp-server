@@ -14,7 +14,7 @@
 
 (in-package #:lisp-mcp-server/src/log)
 
-(defparameter *log-level* :info)
+(defparameter *log-level* :debug)
 (defparameter *log-stream* *error-output*)
 (defparameter *log-context* nil
   "Optional list of alternating key/value pairs appended to every log line.")

@@ -40,6 +40,9 @@
 (defparameter *tcp-conn-counter* 0
   "Monotonic counter used to tag connections in logs.")
 
+(defun %fd-count ()
+  (ignore-errors (length (directory #P"/proc/self/fd/*"))))
+
 (defun tcp-server-running-p ()
   "Return T when a background TCP server thread is alive."
   (and *tcp-server-thread*
@@ -192,14 +195,14 @@ accepts a single connection and returns T after the client closes."
                                      nil)))
                            ;; Proceed only if client is successfully obtained
                            (when client
-                             (let ((remote (ignore-errors (usocket:get-peer-address client))))
-                               (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
-                               (setf stream (usocket:socket-stream client))
-                               (%process-stream stream client conn-id remote)))
+                           (let ((remote (ignore-errors (usocket:get-peer-address client))))
+                             (log-event :info "tcp.accept" "conn" conn-id "remote" remote)
+                             (setf stream (usocket:socket-stream client))
+                             (%process-stream stream client conn-id remote)))
                            t)
                       (when stream (ignore-errors (close stream)))
                       (when client (ignore-errors (usocket:socket-close client)))
-                      (log-event :info "tcp.conn.closed" "conn" conn-id))))
+                      (log-event :info "tcp.conn.closed" "conn" conn-id "fd" (%fd-count)))))
                 (accept-loop ()
                   (loop while (not *tcp-stop-flag*)
                         do (let ((ready (usocket:wait-for-input (list listener)
