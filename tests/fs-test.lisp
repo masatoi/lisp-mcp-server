@@ -33,6 +33,14 @@
       (ok (find "src" names :test #'string=))
       (ok (not (find ".git" names :test #'string=))))))
 
+(deftest fs-list-directory-includes-files
+  (testing "fs-list-directory returns files with type metadata"
+    (let* ((entries (fs-list-directory "src/"))
+           (core (find "core.lisp" entries :key (lambda (h) (gethash "name" h))
+                                       :test #'string=)))
+      (ok core)
+      (ok (string= "file" (gethash "type" core))))))
+
 (deftest fs-read-file-respects-limit-and-offset
   (testing "limit and offset trim content"
     (let ((txt (fs-read-file "src/core.lisp" :offset 1 :limit 5)))
