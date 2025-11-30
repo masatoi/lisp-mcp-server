@@ -95,10 +95,12 @@ Options:
                         :name "mcp-repl-eval")))
           (loop repeat (ceiling (/ timeout-seconds 0.05))
                 when (not (bordeaux-threads:thread-alive-p worker))
-                  do (return (values-list result-box))
+                  do (return-from repl-eval (values-list result-box))
                 do (sleep 0.05))
           ;; timed out
-          (bordeaux-threads:destroy-thread worker)
+          ;; Avoid destroying a thread that already exited while we were checking.
+          (when (bordeaux-threads:thread-alive-p worker)
+            (bordeaux-threads:destroy-thread worker))
           (values (format nil "Evaluation timed out after ~,2F seconds" timeout-seconds)
                   :timeout
                   ""

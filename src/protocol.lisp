@@ -247,14 +247,14 @@ Returns a downcased local tool name (string)."
     (when name (log-event :debug "tools.call" "name" name "local" local))
     (cond
       ((member local '("repl-eval" "repl.eval" "repl_eval") :test #'string=)
-       (handler-case
-           (let* ((code (and args (gethash "code" args)))
-                  (pkg  (and args (gethash "package" args)))
-                  (pl   (and args (gethash "printLevel" args)))
-                  (plen (and args (gethash "printLength" args)))
-                  (timeout (and args (gethash "timeoutSeconds" args)))
-                  (max-out (and args (gethash "maxOutputLength" args)))
-                  (safe-read (and args (gethash "safeRead" args))))
+       (let* ((code (and args (gethash "code" args)))
+              (pkg  (and args (gethash "package" args)))
+              (pl   (and args (gethash "printLevel" args)))
+              (plen (and args (gethash "printLength" args)))
+              (timeout (and args (gethash "timeoutSeconds" args)))
+              (max-out (and args (gethash "maxOutputLength" args)))
+              (safe-read (and args (gethash "safeRead" args))))
+         (handler-case
              (multiple-value-bind (printed _ stdout stderr)
                  (repl-eval (or code "")
                             :package (or pkg *package*)
@@ -267,10 +267,11 @@ Returns a downcased local tool name (string)."
                (%result id (%make-ht
                             "content" (%text-content printed)
                             "stdout" stdout
-                            "stderr" stderr))))
-         (error (e)
-           (%error id -32603
-                   (format nil "Internal error during REPL evaluation: ~A" e)))))
+                            "stderr" stderr)))
+           (error (e)
+             (cons "Internal error during REPL evaluation" e)
+             (%error id -32603
+                     (format nil "Internal error during REPL evaluation: ~A" e))))))
 
       ((member local '("fs-read-file" "fs_read_file" "read_file" "read") :test #'string=)
        (handler-case
