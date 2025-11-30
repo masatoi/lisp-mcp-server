@@ -134,7 +134,8 @@ there"))
    "description"
    "Read a text file with optional offset and limit.
 Prefer absolute paths inside the project; offset/limit are character counts
-to avoid loading whole files."
+to avoid loading whole files.
+It can only open files in the project or in loaded dependent libraries."
    "inputSchema" (let ((p (make-hash-table :test #'equal)))
                    (setf (gethash "path" p)
                          (%make-ht "type" "string"

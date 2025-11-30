@@ -101,6 +101,7 @@ Input:
 - `offset` / `limit` (integer, optional): substring window
 
 Policy: reads are allowed only when the resolved path is under the project root or under `asdf:system-source-directory` of a registered system.
+Dependency libs: reading source in Quicklisp/ASDF dependencies is permitted **only via `fs-read-file`**; do not shell out for metadata (`wc`, `stat`, etc.). File length is intentionally not returned—page through content with `limit`/`offset` when needed.
 
 ### `fs-write-file`
 Write text to a file under the project root (directories auto-created).
