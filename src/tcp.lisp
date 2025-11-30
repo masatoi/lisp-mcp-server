@@ -114,6 +114,14 @@ successfully started, or NIL if the start attempt failed."
   (when (tcp-server-running-p)
     (log-event :info "tcp.thread.stop" "port" *tcp-server-port*)
     (setf *tcp-stop-flag* t)
+    ;; Nudge the accept loop by making a loopback connection so wait-for-input/accept unblocks.
+    (when *tcp-server-port*
+      (ignore-errors
+       (let ((sock (usocket:socket-connect "127.0.0.1" *tcp-server-port*
+                                           :timeout 1.0
+                                           :element-type 'character)))
+         (when sock
+           (ignore-errors (usocket:socket-close sock))))))
     (when *tcp-listener*
       (ignore-errors (usocket:socket-close *tcp-listener*)))
     (when *tcp-server-thread*
