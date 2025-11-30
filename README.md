@@ -120,6 +120,22 @@ Input:
 
 Returns: `entries` array plus human-readable `content`.
 
+### `check-parens`
+Check balanced parentheses/brackets in a file slice or provided code; returns the first mismatch position.
+
+Input:
+- `path` (string, optional): absolute path inside the project or registered ASDF system (mutually exclusive with `code`)
+- `code` (string, optional): raw code string (mutually exclusive with `path`)
+- `offset` / `limit` (integer, optional): window when reading from `path`
+
+Output:
+- `ok` (boolean)
+- when not ok: `kind` (`extra-close` | `mismatch` | `unclosed` | `too-large`), `expected`, `found`, and `position` (`offset`, `line`, `column`).
+
+Notes:
+- Uses the same read allow-list and 2 MB cap as `fs-read-file`.
+- Ignores delimiters inside strings, `;` line comments, and `#| ... |#` block comments.
+
 ### `code-find`
 Return definition location (path, line) for a symbol using SBCL `sb-introspect`.
 
