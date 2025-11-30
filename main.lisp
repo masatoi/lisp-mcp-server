@@ -18,6 +18,8 @@
                 #:code-describe-symbol)
   (:import-from #:lisp-mcp-server/src/repl
                 #:repl-eval)
+  (:import-from #:lisp-mcp-server/src/validate
+                #:check-parens)
   (:import-from #:lisp-mcp-server/src/protocol
                 #:process-json-line)
   (:import-from #:lisp-mcp-server/src/tcp
@@ -37,6 +39,7 @@
            #:fs-write-file
            #:fs-list-directory
            #:*project-root*
+           #:check-parens
            ;; Code intelligence
            #:code-find-definition
            #:code-describe-symbol

@@ -9,6 +9,8 @@
                 #:fs-read-file #:fs-write-file #:fs-list-directory)
   (:import-from #:lisp-mcp-server/src/code
                 #:code-find-definition #:code-describe-symbol)
+  (:import-from #:lisp-mcp-server/src/validate
+                #:check-parens)
   (:import-from #:yason #:encode #:parse)
   (:export
    #:+protocol-version+
@@ -223,13 +225,38 @@ and is loaded"))
                              "properties" p
                              "required" (vector "symbol")))))
 
+(defun tools-descriptor-check-parens ()
+  (%make-ht
+   "name" "check-parens"
+   "description"
+   "Check balanced parentheses/brackets in a file slice or provided code; returns the first mismatch position."
+   "inputSchema" (let ((p (make-hash-table :test #'equal)))
+                   (setf (gethash "path" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Absolute path inside project or registered ASDF system (mutually exclusive with code)"))
+                   (setf (gethash "code" p)
+                         (%make-ht "type" "string"
+                                   "description"
+                                   "Raw code string to check (mutually exclusive with path)"))
+                   (setf (gethash "offset" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "0-based character offset when reading from path"))
+                   (setf (gethash "limit" p)
+                         (%make-ht "type" "integer"
+                                   "description"
+                                   "Maximum characters to read from path"))
+                   (%make-ht "type" "object" "properties" p))))
+
 (defun handle-tools-list (id)
   (let* ((tools (vector (tools-descriptor-repl)
                         (tools-descriptor-fs-read)
                         (tools-descriptor-fs-write)
                         (tools-descriptor-fs-list)
                         (tools-descriptor-code-find)
-                        (tools-descriptor-code-describe))))
+                        (tools-descriptor-code-describe)
+                        (tools-descriptor-check-parens))))
     (%result id (%make-ht "tools" tools))))
 
 (defun %normalize-tool-name (name)
@@ -349,8 +376,8 @@ Returns a downcased local tool name (string)."
                                 "path" path
                                 "line" line
                                 "content" (%text-content
-                                            (format nil "~A defined in ~A at line ~D"
-                                                    symbol path line))))
+                                           (format nil "~A defined in ~A at line ~D"
+                                                   symbol path line))))
                    (%error id -32004 (format nil "Definition not found for ~A" symbol)))))
          (error (e)
            (%error id -32603
@@ -378,9 +405,26 @@ Returns a downcased local tool name (string)."
            (%error id -32603
                    (format nil "Internal error during code-describe: ~A" e)))))
 
+      ((member local '("check-parens" "check_parens" "parens") :test #'string=)
+       (handler-case
+           (let* ((path (and args (gethash "path" args)))
+                  (code (and args (gethash "code" args)))
+                  (offset (and args (gethash "offset" args)))
+                  (limit (and args (gethash "limit" args))))
+             (when (and path code)
+               (return-from handle-tools-call
+                 (%error id -32602 "Provide only one of path or code")))
+             (when (and (null path) (null code))
+               (return-from handle-tools-call
+                 (%error id -32602 "Either path or code is required")))
+             (let ((result (check-parens :path path :code code :offset offset :limit limit)))
+               (%result id result)))
+         (error (e)
+           (%error id -32603
+                   (format nil "Internal error during check-parens: ~A" e)))))
+
       (t
        (%error id -32601 (format nil "Tool ~A not found" name))))))
-
 
 (defun handle-request (state id method params)
   (cond
