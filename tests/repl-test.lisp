@@ -6,6 +6,8 @@
 
 (in-package #:lisp-mcp-server/tests/repl-test)
 
+(defparameter *timeout-flag* nil)
+
 (deftest repl-eval-simple
   (testing "(+ 1 2) returns 3 as a string"
     (multiple-value-bind (printed value)
@@ -63,6 +65,20 @@
       (ok (eql value :timeout))
       (ok (string= stdout ""))
       (ok (string= stderr "")))))
+
+(deftest repl-eval-timeout-kills-worker
+  (testing "timeout stops the worker thread so side effects never run"
+    (setf *timeout-flag* nil)
+    (multiple-value-bind (printed value stdout stderr)
+        (repl-eval "(progn (sleep 2) (setf lisp-mcp-server/tests/repl-test::*timeout-flag* :done))"
+                   :timeout-seconds 0.1)
+      (ok (search "timed out" printed))
+      (ok (eql value :timeout))
+      (ok (string= stdout ""))
+      (ok (string= stderr ""))
+      ;; give any stray worker time to run if it survived; it should not.
+      (sleep 0.2)
+      (ok (null *timeout-flag*)))))
 
 (deftest repl-eval-safe-read-disables-reader-eval
   (testing "safe-read prevents #. reader evaluation"
